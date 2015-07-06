@@ -45,6 +45,7 @@ class gitReminder
      */
     public function setGithubAccount ($ghUser, $ghApiToken)
     {
+    	$this->githubRepo = new GitHubClient(); 
         $this->github->setCredentials($user, $pwd);
         return $this;
     }
