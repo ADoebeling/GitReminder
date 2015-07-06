@@ -1,5 +1,8 @@
 <?php
 
+require_once '../3rd-party/tan-tan-kanarek/github-php-client/client/GitHubClient.php';
+
+
 /**
  * Class gitReminder
  *
@@ -13,7 +16,7 @@
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
  * @link        http://www.1601.com
- * @version     0.1.150704_1ad
+ * @version     0.1.150704_1lb
  */
 class gitReminder
 {
@@ -45,6 +48,7 @@ class gitReminder
      */
     public function setGithubAccount ($ghUser, $ghApiToken)
     {
+    	$this->githubRepo = new GitHubClient(); 
         $this->github->setCredentials($user, $pwd);
         return $this;
     }
@@ -52,12 +56,18 @@ class gitReminder
     /**
      * Load serialized tasks from last run
      *
-     * @todo Implement
      * @param $file
      * @return $this
      */
     public function loadStoredTasks($file = FILE_TASKS_SERIALIZED)
     {
+    	if (!file_exists($file))
+    	{
+    		throw new Exception("File '$file' not found!",404);
+    	}
+    	
+    	array_push($this->tasks, unserialize(file_get_contents($file)));
+    	    	
         return $this;
     }
 
@@ -101,12 +111,18 @@ class gitReminder
      * Stores the current $tasks-array as serialized
      * array at the given location
      *
-     * @todo Implement
      * @param $file
      * @return $this
      */
     public function storeTasks($file = FILE_TASKS_SERIALIZED)
     {
+    	if (!file_exists($file))
+    	{
+    		throw new Exception("File '$file' not found!",404);
+    	}
+    	
+    	file_put_contents($file, serialize($this->tasks));
+    	
         return $this;
     }
 
