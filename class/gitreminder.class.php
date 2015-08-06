@@ -27,7 +27,7 @@ class gitReminder
 
     /**
      * List of all found and pared tasks
-     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sendMailNotificationTo' => X, 'sourceText' => X)
+     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sendMailNotificationTo' => X, 'sourceText' => X, 'date' => X)
      */
     private $tasks = array();
 
@@ -110,7 +110,8 @@ class gitReminder
     /**
      * Stores the current $tasks-array as serialized
      * array at the given location
-     *
+     * @todo Implement "Stores the current $tasks-array to Database"
+     * @todo Implement "Stores the current $tasks-array to Json"
      * @param $file
      * @return $this
      */
