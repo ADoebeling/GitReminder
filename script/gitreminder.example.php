@@ -3,9 +3,10 @@
 require_once('../class/gitreminder.class.php');
 
 $gitReminder = new gitReminder();
-$gitReminder -> setGhAccount('gitHub-User', 'API-Token')
-             -> loadStoredTasks()
+$gitReminder -> setGithubAccount('gh-lb1601com', 'ichbineinpassword')
+             //-> loadStoredTasks()
              -> loadGhNotifications()
-             -> parseSourceText()
-             -> process()
-             -> storeTasks();
+             //-> parseSourceText()
+             //-> process()
+             //-> storeTasksSerialized();
+?>

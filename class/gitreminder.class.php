@@ -24,10 +24,15 @@ class gitReminder
      * @const string FILE_TASKS_SERIALIZED Default-path for stored, serialized tasks
      */
     const FILE_TASKS_SERIALIZED = '../data/tasks.phpserialize';
+    
+    /**
+     * @const string FILE_TASKS_JSON Default-path for stored and encode tasks
+     */
+    const FILE_TASKS_JSON = '../data/tasks.json';
 
     /**
      * List of all found and pared tasks
-     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sendMailNotificationTo' => X, 'sourceText' => X, 'date' => X)
+     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sendMailNotificationTo' => X, 'sourceText' => X, 'matureDate' => X)
      */
     private $tasks = array();
 
@@ -36,7 +41,7 @@ class gitReminder
      */
     public function __construct()
     {
-
+		
     }
 
     /**
@@ -48,13 +53,15 @@ class gitReminder
      */
     public function setGithubAccount ($ghUser, $ghApiToken)
     {
+    	
     	$this->githubRepo = new GitHubClient(); 
-        $this->github->setCredentials($user, $pwd);
+        $this->githubRepo->setCredentials($ghUser, $ghApiToken);
         return $this;
     }
 
+    
     /**
-     * Load serialized tasks from last run
+     * Load serialized tasks from last run 
      *
      * @param $file
      * @return $this
@@ -70,6 +77,37 @@ class gitReminder
     	    	
         return $this;
     }
+    
+    
+    /**
+     * Load stored task from Database
+     * @param $dbHost
+     * @param $dbUser
+     * @param $dbName
+     * @param $dbPwd
+     */
+    public function loadStoredTasksFromDatabase()
+    {
+    	
+    }
+    
+    /**
+     * Load encoded tasks from last run
+     *
+     * @param $jfile
+     * @return $this
+     */
+    public function loadStoredTasksFromJson($jFile = FILE_TASKS_JSON)
+    {
+    	if (!file_exists($file))
+    	{
+    		throw new Exception("File '$file' not found!",404);
+    	}
+    	 
+    	array_push($this->tasks,son_decode (file_get_contents($jFile)));
+    
+    	return $this;
+    }
 
     /**
      * Load unread GitHub-Notifications and store them to
@@ -80,7 +118,14 @@ class gitReminder
      */
     public function loadGhNotifications()
     {
-        return $this;
+    	//var_dump($this->githubRepo->activity);
+    	$this->tasks = $this->githubRepo->activity->notifications->listYourNotifications();
+    	echo "<br><br>";
+    	var_dump($this->tasks[94533633]);
+    	echo "<br><br>";
+    	var_dump($this->tasks[94532367]);
+        return $this->tasks;
+        
     }
 
     /**
@@ -107,6 +152,11 @@ class gitReminder
         return $this;
     }
 
+    
+    
+    
+    
+    
     /**
      * Stores the current $tasks-array as serialized
      * array at the given location
@@ -115,7 +165,7 @@ class gitReminder
      * @param $file
      * @return $this
      */
-    public function storeTasks($file = FILE_TASKS_SERIALIZED)
+    public function storeTasksSerialized($file = FILE_TASKS_SERIALIZED)
     {
     	if (!file_exists($file))
     	{
@@ -126,7 +176,79 @@ class gitReminder
     	
         return $this;
     }
+    
+    /**
+     * Stores the current $tasks-array in a database
+     * @param $dbHost
+     * @param $dbUser
+     * @param $dbName
+     * @param $dbPwd
+     * 
+     */
+    public function storeTasksInDatabase($dbHost,$dbUser,$dbName,$dbPwd)
+    {
+    	$db_link = mysqli_connect (
+    			$dbHost,
+    			$dbUser,
+    			$dbPwd,
+    			$dbName
+    	) or die ("Keine Verbindung möglich: ".mysql_error());
+    	mysql_select_db($dbName,$db_link) or die ("Keine Verbindung möglich: ".mysql_error());
+    	mysqli_set_charset($db_link, 'utf8');
+    	
+    	$sql = "
+    	CREATE TABLE 'tasks'(
+    			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    			`taskName` VARCHAR( 150 ) NOT NULL ,
+    			`ghRepoUser` VARCHAR( 150 ) NOT NULL ,
+    			`ghRepo` VARCHAR( 150 ) NOT NULL ,
+    			`ghIssueId` VARCHAR( 150 ) NOT NULL ,
+    			`assignIssueToUser` VARCHAR( 150 ) NOT NULL ,
+    			`sendMailNotificationTo` INT(1) NOT NULL ,
+    			`sourceText` VARCHAR( 250 ) NOT NULL ,
+    			`matureDate` INT(8) NOT NULL ,
+    			)ENGINE = MYISAM ;";
+    	$db_erg = mysqli_query($db_link, $sql);
+    			
+    	foreach ($this->tasks as $taskName=>$task)
+    	{
+    		$ghRepoUser = $task['ghRepoUser'];
+    		$ghRepo = $task['ghRepo'];
+    		$ghIssueId = $task['ghIssueId'];
+    		$assignIssueToUser = $task['assignIssueToUser'];
+    		$sendMailNotificationTo = $task['sendMailNotificationTo'];
+    		$sourceText = $task['sourceText'];
+    		$matureDate = $task['matureDate'];
+			mysql_query("INSERT INTO tasks ('taskName','ghRepoUser','ghRepo','ghIssueId','assignIssueToUser','sendMailNotificationTo','sourceText','matureDate') VALUES ($taskName,$ghRepoUser,$ghRepo,$ghIssueId,$assignIssueToUser,$sendMailNotificationTo,$sourceText,$matureDate)");
+    	}
+    	return $this;
+    }
+    
+    
+    
+    /**
+     * Stores the current $tasks-array in a json-file
+     * @param $jFile
+     */
+    public function storeTasksInJson($jFile = FILE_TASKS_JSON)
+    {
+    	if (!file_exists($jFile))
+    	{
+    		throw new Exception("File '$jFile' not found!",404);
+    	}
+    	file_put_contents($jFile, json_encode($this->tasks,JSON_UNESCAPED_UNICODE));
+    	
+    	return $this;
+    }
 
+    
+    
+    
+    
+    
+    
+    
+    
     /**
      * (Reopen and) assign a issue to the given user
      *
