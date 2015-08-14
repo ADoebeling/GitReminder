@@ -1,4 +1,4 @@
 <?php
 error_reporting (1);
 error_reporting(E_ALL);
-include 'gitreminder.example.php';
+include 'gitreminder.php';
