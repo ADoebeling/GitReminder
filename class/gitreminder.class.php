@@ -11,12 +11,13 @@ require_once '../3rd-party/tan-tan-kanarek/github-php-client/client/GitHubClient
  * issues
  *
  * @author      Andreas Doebeling <ad@1601.com>
+ * @author      Lukas Beck <lb@1601.com>
  * @copyright   1601.communication gmbh
  * @license     CC-BY-SA | https://creativecommons.org/licenses/by-sa/3.0
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
  * @link        http://www.1601.com
- * @version     0.1.150704_1lb
+ * @version     0.1.150718_1lb
  */
 class gitReminder
 {
@@ -74,22 +75,22 @@ class gitReminder
     		throw new Exception("File '$file' not found!",404);
     	}
     	
-    	array_push($this->tasks, unserialize(file_get_contents($file)));
-    	    	
+    	$this->tasks = array_merge($this->tasks, unserialize(file_get_contents($file)));
+    
         return $this;
     }
     
     
     /**
      * Load stored task from Database
-     * @param $dbHost
-     * @param $dbUser
-     * @param $dbName
-     * @param $dbPwd
+     * @param string $dbHost
+     * @param string $dbUser
+     * @param string $dbName
+     * @param string $dbPwd
      */
     public function loadStoredTasksFromDatabase()
     {
-    	
+    	throw new \Exception ('Protocol "$type" not implemented yet', 501);
     }
     
     /**
@@ -119,7 +120,10 @@ class gitReminder
      */
     public function loadGhNotifications($nameGitReminder)
     {
-			
+		//debug
+	//$this->tasks = array('blau' => 'gruen', 'browser' => 'chrome');
+	//return $this;
+    	
     	// @TODO: Find methode to read current notifications
     	// @TODO: Don't load unnecessary api-urls to make the json smaller
     	// ad@1601.com | 150811
@@ -129,29 +133,35 @@ class gitReminder
     	// are protected so we could not load them from our position.
     	
     	/*We are looking for new notifications and return the Array*/
-    	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array(), 200, 'string', true), true);
+    	$data = array(
+    		'participating' => true,	
+    	);
+    	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', $data, 200, 'string', true), true);
+
     	
-    	
-    	foreach ($notifications as $elements)
+    	foreach ($notifications as $element)
     	{
     		//$comments = $this->githubRepo->issues->comments->listCommentsOnAnIssue($task["repository"]["owner"]["login"],$task["repository"]["name"],$task["id"]);echo"<br><br><br><br>";
-    		$repoOwner = $elements["repository"]["owner"]["login"];
-    		$repo =  $elements["repository"]["name"];
-    		$issue_name = $elements["subject"]["title"];
-    		$issue_path_ok = str_replace("https://api.github.com","",$elements["subject"]["url"]);
+    		$repoOwner = $element["repository"]["owner"]["login"];
+    		$repo =  $element["repository"]["name"];
+    		$issueTitel = $element["subject"]["title"];
+    		$issue_path_ok = str_replace("https://api.github.com","",$element["subject"]["url"]);
     		$issue_id = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issue_path_ok));
 			
-    		$taskIndex = "/$repoOwner/$repo/$issue_name/$issue_id";
+    		$taskIndex = "/$repoOwner/$repo/issue/$issue_id";
+    		    		   		
     		
     		/*We create the Array tasks[] with [index] and subarray[values]*/
     		$this->tasks[$taskIndex] = array(
     				'ghRepoUser' => $repoOwner,
     				'ghRepo'	 => $repo,
+    				'issueTitel' => $issueTitel,
     				'ghIssueId'	 => $issue_id,
     				'assignIssueToUser' => "",
     				'sendMailNotificationTo' => "",
     				'sourceText' => "",
     				'matureDate' => "",
+    				'commentAuthor' => "",
     		);
     		
     		/*Load the first comment from Issue*/
@@ -162,6 +172,9 @@ class gitReminder
     		
     		$firstCommentBody = $firstComment->getBody();
     		
+    		$firstCommentAuthor = $firstComment->getuser()->getlogin();
+    		
+    		
     		/*Look at the "body"string and search $nameGitReminder (name of bot) in the first comment*/
     		$pos = strpos($firstCommentBody, $nameGitReminder);
 			
@@ -169,23 +182,30 @@ class gitReminder
 			if ($pos !== false && $firstCommentBody != $this->tasks[$taskIndex]['sourceText'])
     		{
     			$this->tasks[$taskIndex]['sourceText'] = trim($firstCommentBody);
+    			$this->tasks[$taskIndex]['commentAuthor'] = trim($firstCommentAuthor);
     		}
     		
     		/*Here we are looking for the $nameGitReminder (name of bot) in the other "body"strings*/
     		foreach ($comments as $commentObject)
     		{
     			$nextComments = $commentObject->getBody();
+    			$nextCommentAuthor = $commentObject->getuser()->getlogin();
     			$pos = strpos($nextComments, $nameGitReminder);
     			
     			/*If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten*/
     			if ($pos !== false && $nextComments != $this->tasks[$taskIndex]['sourceText'])
     			{
     				$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
+    				$this->tasks[$taskIndex]['commentAuthor'] = trim($nextCommentAuthor);
     			}
     		}
     		
     	}
     	
+    	// Mark notification as red /////// $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/notifications", 'PUT', array(), 205, ''); ////////// $this->githubRepo->request("/notifications", 'PUT', array(), 205, '');
+    	//$this->githubRepo->request("/notifications", 'PUT', array(), 205, '');
+    	//$this->githubRepo->activity->notifications->markAsRead();
+    	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
     	return $this;
 	}
 
@@ -198,36 +218,48 @@ class gitReminder
      */
     public function parseSourceText($nameGitReminder)
     {
-    	foreach ($this->tasks as $comment)
+    	
+    	foreach ($this->tasks as &$comment)
     	{
-    		if ($comment['matureDate'] == "")
+    		if (isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "")
     		{
-    			$commentArray = array();
-    		
-    			$commentArray = explode("\n",$comment['sourceText']);
-    		
-    			foreach ($commentArray as &$oneLine)
-    			{
-    				$oneLine = trim($oneLine);
-    				$pos = strpos($oneLine, $nameGitReminder);
+				
+					// Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
+	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9})(?<timeFormat>.)(?=\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?/",$comment['sourceText'],$value);
     			
-    				if ($pos !== false)
-    				{
-    					// ([\+])?[1-9]{1,9}[\h|d]			 is looking for +2h
-    					// (\+)?\d{1,9}						 is searching for "'+'int" like +242
-    					// (\+)?\d{1,9}[h|d] 				 is looking for "'+'int'h|d'" like +242h
-    					$value = preg_split("/[\s,;]+/", $oneLine);
-    					
-    					preg_match("/(?<=\+)?\d{1,9}(?=d|h|t|s)?/", $value[1], $value["intTime"], PREG_OFFSET_CAPTURE);
-    					
-    					var_dump($value["intTime"]);
-    				}
-    			}
-    		}
-    		
-    		
+    			    			
+	    			//If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign
+	    			if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
+	    			{
+	    				$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
+	    			}
+	    			else if (isset($comment['commentAuthor']))
+	    			{
+	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+	    			}
+	    				    			
+	    			//If the timeformat is "h" or "s" or "H" or "S" for "hour" or "Stunden" it will interpreted as hour an calc the unixtimestamp + Hours form $value["time"] and write this into $this->tasks[~]["matureDate"]. 
+	    			//Else it will calc the unixtimestamp + $value["matureDate"] as days and write this into $this->tasks[~]["matureDate"]
+	    			if (isset($value["timeFormat"]) && ($value["timeFormat"]=="h" || $value["timeFormat"]=="s" || $value["timeFormat"]=="H" ||$value["timeFormat"]=="S"))
+	    			{
+	    				$time = intval($value["matureDate"]);
+	    				$time = $time*60*60;
+	    				$comment["matureDate"] = $time+time();
+	    			}
+	    			elseif(isset($value["timeFormat"]) && $value["timeFormat"]=="m")
+	    			{
+	    				$time = intval($value["matureDate"]);
+	    				$time = $time*60;
+	    				$comment["matureDate"] = $time+time();
+	    			}
+	    			elseif(isset($value["timeFormat"]))
+	    			{
+	    				$time = intval($value["matureDate"]);
+	    				$time = $time*60*60*24;
+	    				$comment["matureDate"] = $time+time();
+	    			}
+    		}	    		
     	}
-    
     	return $this;
     }
 
@@ -240,9 +272,42 @@ class gitReminder
      */
     public function process($link = 'ALL')
     {
+    	//$this->githubRepo->issues->editAnIssue('lb1601com', 'gitReminderTester', 'Test Nr. 5', 4,null,'lb1601com');
+    	foreach ($this->tasks as $taskLink => &$task)
+    	{
+     		if (!isset($task["matureDate"])) $task["matureDate"] = time();
+     		
+    		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
+     		{
+     			//$this->githubRepo->issues->issuesAssignees->createComment();
+     			
+     			try {
+     				$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"],null,$task["assignIssueToUser"]);
+     			}
+     			catch (Exception $e)
+     			{
+     				// TODO: Implement Expeption handling
+     				die("something went quite wrong in Line 288: ".$e->getMessage());		
+     			}
+     			unset($this->tasks[$taskLink]);
+     			
+     		}
+    	}
         return $this;
     }
-
+    
+    /**
+     * @todo implement
+     * Send an Errormessage to admin@1610.com and write the Error into the Logfile
+     * @param string or array $error
+     * @param int $errorCode
+     * @return $this;
+     */
+	public function throwError($error,$errorCode)
+	{
+		return $this;
+	}
+	
     /**
      * @todo implement
      * @param string $methode
@@ -375,5 +440,13 @@ class gitReminder
         return $this;
     }
 
-
+	
+    public function __destruct()
+    {
+    	echo "<pre>";
+    	print_r($this->tasks);
+    	echo "</pre>";
+    }
+    
+    
 }
