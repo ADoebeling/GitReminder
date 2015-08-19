@@ -1,3 +1,6 @@
 [submodule "3rd-party/tan-tan-kanarek/github-php-client"]
 	path = 3rd-party/tan-tan-kanarek/github-php-client
 	url = https://github.com/tan-tan-kanarek/github-php-client
+[submodule "3rd-party/KLogger"]
+	path = 3rd-party/KLogger
+	url = https://github.com/katzgrau/KLogger
