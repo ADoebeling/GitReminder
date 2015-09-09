@@ -1,0 +1,5 @@
+09.09.15 06:04:12||notice||------GITREMINDER STARTS HERE TO WORK..----||
+09.09.15 06:04:13||info||Issue "9" with the title "GitReminder Test #11111111111" has been assigned to user: "lb1601com"||
+09.09.15 06:04:13||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+09.09.15 06:07:13||notice||------GITREMINDER STARTS HERE TO WORK..----||
+09.09.15 06:07:14||notice||------NOW GITREMINDER FINISHED TO WORK!----||

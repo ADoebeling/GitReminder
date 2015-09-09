@@ -1,4 +1,0 @@
-19.08.15 20:45:27||notice||GitReminder starts to work..||
-19.08.15 20:45:28||notice||.. now it finished to work!||
-19.08.15 20:56:10||notice||GitReminder starts to work..||
-19.08.15 20:56:11||notice||.. now it finished to work!||

@@ -36,6 +36,7 @@ class log
 		return $this->add(__FUNCTION__, $desc, $array);
 	}
 	
+	
 	public function __destruct()
 	{
 		$text = "";
@@ -45,7 +46,7 @@ class log
 		}
 						
 		$timestamp = time();
-		$datum = date("d-m-Y",$timestamp);
+		$datum = date("Y-m-d",$timestamp);
 		
 		$file = self::LOG_PATH."log-".$datum.".txt";
 		
@@ -55,7 +56,6 @@ class log
 		fwrite($fp, $text);
 		fclose($fp);		
 	}
-	
 	
 	
 }
