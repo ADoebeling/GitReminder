@@ -35,7 +35,7 @@ class gitReminder
     /**
      * @const string NAME_OF_GITREMINDER Default name of GitHub-User
      */
-    const NAME_OF_GITREMINDER = 'name';
+    const NAME_OF_GITREMINDER = 'gitreminder';
     
     
     /**
@@ -146,9 +146,12 @@ class gitReminder
     	// a list of all notifications including the html_url and fe_issue_id
     	// all methodes within githubRepo->activity->notifications->listYourNotifications()[x] 
     	// are protected so we could not load them from our position.
+  	
     	
-    	/*We are looking for new notifications and return them as an Array in var $notification*/
+    	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
+    	
+    	//var_dump($notifications);
     	
         if(count($notifications)>=30)$this->log->warning("$name$nameGitReminder has been called more than 30 times\n\n",$notifications);
         
@@ -158,74 +161,80 @@ class gitReminder
     		$repo =  $element["repository"]["name"];
     		$issueTitel = $element["subject"]["title"];
     		$issue_path_ok = str_replace("https://api.github.com","",$element["subject"]["url"]);
-    		$issue_id = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issue_path_ok));
+    		$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issue_path_ok));
+
+    		//Check how many comments the Issue have.
+    		$issue = $this->loadIssue($repoOwner, $repo, $issueId);
+    		$countComments = $issue->getComments();
     		
-    		/*Write new Notification into the logfile*/
+    		$loop = intval($countComments / 30)+1;
+
+    		//Write new Notification into the logfile
     		$this->log->info("New Notification from Repo: $repo and Issue: $issueTitel");
 			
-    		/*Create the Index of one task*/
-    		$taskIndex = "/$repoOwner/$repo/issue/$issue_id";
+    		//Create the Index of one task
+    		$taskIndex = "/$repoOwner/$repo/issue/$issueId";
     		
-    		/*We create the Array tasks[] with [index] and subarray[values]*/
+    		//We create the Array tasks[] with [index] and subarray[values]
     		$this->tasks[$taskIndex] = array(
     				'ghRepoUser' => $repoOwner,
     				'ghRepo'	 => $repo,
     				'issueTitel' => $issueTitel,
-    				'ghIssueId'	 => $issue_id,
-    				'assignIssueToUser' => "",
-    				'sendMailNotificationTo' => "",
-    				'sourceText' => "",
-    				'matureDate' => "",
-    				'commentAuthor' => "",
-    				'commentCreateDate' => "",
+    				'ghIssueId'	 => $issueId,
     		);
     		
+    		$comments = array();
     		
-    		
-    		
-    		/*Load all commits in the Array $comments[] from issue*/
-    		$comments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issue_id."/comments", 'GET', array(), 200, 'GitHubPullComment', true);
-    		    		
-    		/*Here we sort the array from behind*/
-    		krsort($comments);
-    		
-    		/*Here we are looking for the $nameGitReminder (name of bot) in the other "body"strings*/
-    		foreach ($comments as $commentObject)
+    		for ($i=1;$i<=$loop;$i++)
     		{
-    			$nextComments = $commentObject->getBody();
-    			$nextCommentAuthor = $commentObject->getuser()->getlogin();
-    			$nextCommentDate = $commentObject->getCreatedAt();
-    			$pos = strpos($nextComments, $nameGitReminder);
-    			 
-    			/*If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten*/
-    			if ($pos !== false && $nextComments != $this->tasks[$taskIndex]['sourceText'])
-    			{
-					$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
-    				$this->tasks[$taskIndex]['commentAuthor'] = trim($nextCommentAuthor);
-    				$this->tasks[$taskIndex]['commentCreateDate'] = trim($nextCommentDate);
-    				break;
-    			}
+	    		//Load all commits in the Array $comments[] from issue
+	    		$newComments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
+	    		$comments += $newComments;
     		}
     		
-    		if (empty($this->tasks[$taskIndex]['sourceText']))
+    		//Here we sort the array from behind
+    		krsort($comments);
+    		
+	    	//Here we are looking for the $nameGitReminder (name of bot) in the other "body"strings
+	    	foreach ($comments as $commentObject)
+	    	{
+	    		$nextComments = $commentObject->getBody();
+	    		$nextCommentAuthor = $commentObject->getuser()->getlogin();
+	    		$nextCommentDate = $commentObject->getCreatedAt();
+	    		$pos = strpos($nextComments, $nameGitReminder);
+	    		 
+	    		//If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
+	    		if ($pos !== false)
+	    		{
+					$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
+	    			$this->tasks[$taskIndex]['commentAuthor'] = trim($nextCommentAuthor);
+	    			$this->tasks[$taskIndex]['commentCreateDate'] = trim($nextCommentDate);
+	    			break;
+	    		}
+	    		
+	    	}
+
+			
+    		
+    		if (!isset($this->tasks[$taskIndex]['sourceText']))
     		{
-    			/*Load the first comment from Issue*/
-    			$firstComment = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issue_id, 'GET', array(), 200, 'GitHubPullComment', true);
-    			
-    			/*Here we will get the body (the message) from the first comment*/
+    			//Load the first comment from Issue
+    			$firstComment = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId, 'GET', array(), 200, 'GitHubPullComment', true);
+
+    			//Here we will get the body (the message) from the first comment
     			$firstCommentBody = $firstComment->getBody();
     			
-    			/*Here we will get the author of the first comment*/
+    			//Here we will get the author of the first comment
     			$firstCommentAuthor = $firstComment->getuser()->getlogin();
     			
-    			/*Here we will get the create date of the first comment*/
+    			//Here we will get the create date of the first comment
     			$firstCommentDate = $firstComment->getCreatedAt();
     			
-    			/*Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment*/
+    			//Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment
     			$pos = strpos($firstCommentBody, $nameGitReminder);
     				
-    			/*If name was found and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten*/
-    			if ($pos !== false && $firstCommentBody != $this->tasks[$taskIndex]['sourceText'])
+    			//If name was found and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
+    			if ($pos !== false)
     			{
     				$this->tasks[$taskIndex]['sourceText'] = trim($firstCommentBody);
     				$this->tasks[$taskIndex]['commentAuthor'] = trim($firstCommentAuthor);
@@ -236,9 +245,9 @@ class gitReminder
     		
     	}
     	
-    	/*Mark notifications as read.*/
+    	//Mark notifications as read.
     	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
-    	return $this;
+		return $this;
 	}
 
 	
@@ -258,53 +267,72 @@ class gitReminder
     	{
     		if (isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "")
     		{
-				
 					/*Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]*/
-	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9})(?<timeFormat>.)(?=\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?/",$comment['sourceText'],$value);
-    			
-    			    		
+	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9}|stop|ignore|end)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?/",$comment['sourceText'],$value);
+			    	
+	    			
 	    			/*If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign*/
 	    			if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
 	    			{
 	    				$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
 	    			}
-	    			else if (isset($comment['commentAuthor']))
+	    			else
 	    			{
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
 	    			
 	    			$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
 	    			
-	    			$timeFormat = strtolower($value['timeFormat']);
+	    			if (isset($value['timeFormat']))$timeFormat = strtolower($value['timeFormat']);
+	    			
+	    			if ($value['matureDate'] == 'stop' ||$value['matureDate'] == 'ignore' ||$value['matureDate'] == 'end')
+	    			{
+	    				$value['matureDate'] = 0;
+	    				$timeFormat = 'm';
+	    			}
 	    			
 	    			if ($timeFormat == 'd' || $timeFormat == 't' || empty($timeFormat))
 	    			{
+	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
+	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    				
 	    				if ($value['matureDate'] >= 366)
 	    				{
+	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], "It's not possible to assign \"".$comment['assignIssueToUser']."\" in \"".$value['matureDate']."\" days! One Year is max! 365Days");
 	    					$this->log->warning("The maturedate from Issue ".$comment['ghIssueId']." and Repo ".$comment['ghRepo']." is in more than 365 days!! Pls. check the Comment!!");
+	    					$comment["matureDate"] = time();
+	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    				}
-	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
 	    			}
 	    			elseif ($timeFormat == 'h' || $timeFormat == 's')
 	    			{
-	    				if ($value['matureDate'] >= 25)
-	    				{
-	    					$this->log->info("The maturedate from Issue ".$comment['ghIssueId']." and Repo ".$comment['ghRepo']." in hours is more than 24. You can ust days ;)");
-	    				}
 	    				$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
+	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    				if ($value['matureDate'] >= 8761)
+	    				{
+	    					$this->log->info("The maturedate from Issue ".$comment['ghIssueId']." and Repo ".$comment['ghRepo']." in hours is more than 8760.");
+	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], "It's not possible to assign \"".$comment['assignIssueToUser']."\" in \"".$value['matureDate']."\" hours! One Year is max!");
+	    					$comment["matureDate"] = time();
+	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+	    				}
 	    			}
 	    			elseif ($timeFormat == 'm')
 	    			{
-	    				if ($value['matureDate'] >= 61)
-	    				{
-	    					$this->log->info("The maturedate from Issue ".$comment['ghIssueId']." and Repo ".$comment['ghRepo']." in minutes is more than 60. You can use hours ;)");
-	    				}
 	    				$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
+	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    				if ($value['matureDate'] >= 525600)
+	    				{
+	    					$this->log->info("The maturedate from Issue ".$comment['ghIssueId']." and Repo ".$comment['ghRepo']." in minutes is more than 525600.");
+	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], "It's not possible to assign \"".$comment['assignIssueToUser']."\" in \"".$value['matureDate']."\" minutes! One Year is max!");
+	    					$comment["matureDate"] = time();
+	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+	    				}
 	    			}
 	    			else 
 	    			{
 	    				$this->log->warning("The timeformat from Repo: ".$comment['ghRepo']." and IssueID: ".$comment['ghIssueId']." is false. The maturedate is in ".$value['matureDate']." days!");
 	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
+	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 	    			}
 	    	}
     	}
@@ -326,6 +354,7 @@ class gitReminder
         $i = 0;
     	foreach ($this->tasks as $taskLink => &$task)
     	{
+    		
      		if (!isset($task["matureDate"])) $task["matureDate"] = time();
      		
     		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
@@ -343,7 +372,10 @@ class gitReminder
      			unset($this->tasks[$taskLink]);
      		}
         }
-        if($i>=21)$this->log->warning("!!More than 20 Issues has been edit!!",$this->tasks);
+        if($i>=21)
+        {
+        	$this->log->warning("!!More than 20 Issues has been edit!!",$this->tasks);
+        }
         return $this;
     }
     
@@ -353,21 +385,41 @@ class gitReminder
     
     
     /**
-     * @todo implement
-     * Send an Errormessage to admin@1610.com and write the Error into the Logfile
+     * Write a comment 
      * @param string or array $error
      * @param int $errorCode
-     * @return $this;
+     * @return $issue;
      */
-	public function createComment($error,$errorCode)
+	public function createComment($repoOwner,$repo,$issueID,$body)
 	{
-	   
-		//$this->githubRepo->issues->issuesAssignees->createComment();
+		$data = array();
+		$data['body'] = $body;
+	   	$this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueID/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
 		return $this;
 	}
 	
-	
-	
+	/**
+	 * Load an Issue with all important informations.
+	 * @param string $repoOwner
+	 * @param string $repo
+	 * @param integer $issueId
+	 */
+	public function loadIssue($repoOwner,$repo,$issueId)
+	{
+		if (is_int($issueId) && is_string($repo) && is_string($repoOwner))
+		{
+			$issue = $this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId",'GET', array(), 200, 'GitHubIssue');
+		}
+		else
+		{
+			$this->log->warning("Can not load Issue from Repo: $repo and IssueID: $issueId");
+			$this->createComment($repoOwner, $repo, $issueId, "There was a mistake pls. try it again.");
+			return false;
+			
+		}
+		
+		return $issue;
+	}
 	
 	
     /**
