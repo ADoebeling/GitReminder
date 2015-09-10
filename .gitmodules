@@ -4,3 +4,6 @@
 [submodule "3rd-party/KLogger"]
 	path = 3rd-party/KLogger
 	url = https://github.com/katzgrau/KLogger
+[submodule "3rd-party/github-php-client"]
+	path = 3rd-party/github-php-client
+	url = https://github.com/tan-tan-kanarek/github-php-client
