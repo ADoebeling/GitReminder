@@ -164,10 +164,11 @@ class gitReminder
     		$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issue_path_ok));
 
     		//Check how many comments the Issue have.
-    		$issue = $this->loadIssue($repoOwner, $repo, $issueId);
-    		$countComments = $issue->getComments();
+    		$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
+    		$intComments = $issueObj->getComments();
     		
-    		$loop = intval($countComments / 30)+1;
+    		//Calc the loop depending on comments
+    		$loop = intval($intComments / 30)+1;
 
     		//Write new Notification into the logfile
     		$this->log->info("New Notification from Repo: $repo and Issue: $issueTitel");
@@ -246,11 +247,9 @@ class gitReminder
     	}
     	
     	//Mark notifications as read.
-    	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+    	//$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
 		return $this;
 	}
-
-	
 	
 	
 	
@@ -267,11 +266,11 @@ class gitReminder
     	{
     		if (isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "")
     		{
-					/*Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]*/
-	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9}|stop|ignore|end)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?/",$comment['sourceText'],$value);
+					//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
+	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?(?<sendmail>mail)?( )?(?<sendmailto>.*@.*)/",$comment['sourceText'],$value);
 			    	
 	    			
-	    			/*If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign*/
+	    			//If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign
 	    			if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
 	    			{
 	    				$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
@@ -281,16 +280,21 @@ class gitReminder
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
 	    			
+	    			//Convert the createtimeformat into timestamp
 	    			$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
 	    			
 	    			if (isset($value['timeFormat']))$timeFormat = strtolower($value['timeFormat']);
 	    			
-	    			if ($value['matureDate'] == 'stop' ||$value['matureDate'] == 'ignore' ||$value['matureDate'] == 'end')
+	    			//If the sytax say stop or ... GitReminder will assign in this moment.
+	    			if ($value['matureDate'] == 'stop' ||$value['matureDate'] == 'ignore' ||$value['matureDate'] == 'end' || $value['matureDate'] == 'now')
 	    			{
 	    				$value['matureDate'] = 0;
 	    				$timeFormat = 'm';
 	    			}
 	    			
+	    			
+	    			
+	    			//Check the timeformat and create the maturedate.
 	    			if ($timeFormat == 'd' || $timeFormat == 't' || empty($timeFormat))
 	    			{
 	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
@@ -334,6 +338,12 @@ class gitReminder
 	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
 	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 	    			}
+	    			
+	    			
+	    			if (isset($value['sendmail']) && isset($value['sendmailto']))
+	    			{
+	    				
+	    			}
 	    	}
     	}
     	return $this;
@@ -366,7 +376,7 @@ class gitReminder
      			catch (Exception $e)
      			{
      				// TODO: Implement Expeption handling
-     				die("something went quite wrong in Line 288: ".$e->getMessage());		
+     				die("something went quite wrong in Line 375: ".$e->getMessage());		
      			}
      			$this->log->info("Issue \"".$task['ghIssueId']."\" with the title \"".$task['issueTitel']."\" has been assigned to user: \"".$task['assignIssueToUser']."\"");
      			unset($this->tasks[$taskLink]);
@@ -404,7 +414,7 @@ class gitReminder
 	 * @param string $repo
 	 * @param integer $issueId
 	 */
-	public function loadIssue($repoOwner,$repo,$issueId)
+	public function getIssue($repoOwner,$repo,$issueId)
 	{
 		if (is_int($issueId) && is_string($repo) && is_string($repoOwner))
 		{
@@ -558,8 +568,9 @@ class gitReminder
      * @param $link
      * @return $this
      */
-    public function sendMailNotification($link)
+    public function sendMailNotification($mailadress)
     {
+    	
         return $this;
     }
 

@@ -143,3 +143,29 @@
 10.09.15 15:14:11||notice||------GITREMINDER STARTS HERE TO WORK..----||
 10.09.15 15:14:12||info||New Notification from Repo: gitReminderTester and Issue: Test Nr. # 8888||
 10.09.15 15:14:13||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 15:25:00||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 15:25:01||info||New Notification from Repo: gitReminderTester and Issue: GitReminder Test #11111111111||
+10.09.15 15:25:04||info||Issue "9" with the title "GitReminder Test #11111111111" has been assigned to user: "gh-lb1601com"||
+10.09.15 15:25:04||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 15:33:18||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 15:33:19||info||New Notification from Repo: GitReminder-test and Issue: GitReminder Test #777||
+10.09.15 15:33:20||info||New Notification from Repo: gitReminderTester and Issue: Test Nr. 10101010||
+10.09.15 15:33:21||info||New Notification from Repo: gitReminderTester and Issue: TESTER!"§§"!||
+10.09.15 15:33:24||info||Issue "5" with the title "GitReminder Test #777" has been assigned to user: "gh-lb1601com"||
+10.09.15 15:33:24||info||Issue "8" with the title "Test Nr. 10101010" has been assigned to user: "gh-lb1601com"||
+10.09.15 15:33:25||info||Issue "10" with the title "TESTER!"§§"!" has been assigned to user: "gh-lb1601com"||
+10.09.15 15:33:25||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 15:34:13||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 15:34:14||info||New Notification from Repo: GitReminder-test and Issue: GitReminder Test #999||
+10.09.15 15:34:16||info||Issue "6" with the title "GitReminder Test #999" has been assigned to user: "gh-lb1601com"||
+10.09.15 15:34:16||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 16:04:20||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 16:04:22||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 16:06:35||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 16:06:36||info||New Notification from Repo: gitReminderTester and Issue: Test Nr. 10101010||
+10.09.15 16:06:37||info||Issue "8" with the title "Test Nr. 10101010" has been assigned to user: "gh-lb1601com"||
+10.09.15 16:06:37||notice||------NOW GITREMINDER FINISHED TO WORK!----||
+10.09.15 16:07:29||notice||------GITREMINDER STARTS HERE TO WORK..----||
+10.09.15 16:07:30||info||New Notification from Repo: gitReminderTester and Issue: Test Nr. 10101010||
+10.09.15 16:07:31||info||Issue "8" with the title "Test Nr. 10101010" has been assigned to user: "gh-lb1601com"||
+10.09.15 16:07:31||notice||------NOW GITREMINDER FINISHED TO WORK!----||
