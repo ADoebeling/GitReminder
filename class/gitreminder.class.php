@@ -1,6 +1,6 @@
 <?php
 
-require_once '../3rd-party/tan-tan-kanarek/github-php-client/client/GitHubClient.php';
+require_once '../3rd-party/github-php-client/client/GitHubClient.php';
 require_once 'log.class.php';
 
 /**
@@ -56,7 +56,7 @@ class gitReminder
     public function __construct()
     {
     	$this->log = new log();
-    	$this->log->notice("------GITREMINDER STARTS HERE TO WORK..----");
+    	$this->log->notice("START");
     	return $this;
     }
 
@@ -151,7 +151,6 @@ class gitReminder
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
     	
-    	//var_dump($notifications);
     	
         if(count($notifications)>=30)$this->log->warning("$name$nameGitReminder has been called more than 30 times\n\n",$notifications);
         
@@ -160,8 +159,8 @@ class gitReminder
     		$repoOwner = $element["repository"]["owner"]["login"];
     		$repo =  $element["repository"]["name"];
     		$issueTitel = $element["subject"]["title"];
-    		$issue_path_ok = str_replace("https://api.github.com","",$element["subject"]["url"]);
-    		$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issue_path_ok));
+    		$issuePath = str_replace("https://api.github.com","",$element["subject"]["url"]);
+    		$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issuePath));
 
     		//Check how many comments the Issue have.
     		$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
@@ -180,6 +179,7 @@ class gitReminder
     		$this->tasks[$taskIndex] = array(
     				'ghRepoUser' => $repoOwner,
     				'ghRepo'	 => $repo,
+    				'issueLink'  => $issuePath,
     				'issueTitel' => $issueTitel,
     				'ghIssueId'	 => $issueId,
     		);
@@ -247,7 +247,8 @@ class gitReminder
     	}
     	
     	//Mark notifications as read.
-    	//$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+    	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+
 		return $this;
 	}
 	
@@ -267,8 +268,8 @@ class gitReminder
     		if (isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "")
     		{
 					//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
-	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?(?<sendmail>mail)?( )?(?<sendmailto>.*@.*)/",$comment['sourceText'],$value);
-			    	
+	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment (?<commentm>.*))|(?<sms>sms (?<number>0\d*)))?/",$comment['sourceText'],$value);
+					
 	    			
 	    			//If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign
 	    			if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
@@ -340,9 +341,17 @@ class gitReminder
 	    			}
 	    			
 	    			
-	    			if (isset($value['sendmail']) && isset($value['sendmailto']))
+	    			if (isset($value['sendmail']) && $value['sendmail'] != '' && $value['sendmailto'] != '')
 	    			{
-	    				
+	    				$comment['sendMailNotificationTo'] = $value['sendmailto'];
+	    			}
+	    			elseif (isset($value['writeComment']) && $value['writeComment'] != '' && $value['commentm'] != '')
+	    			{
+	    				$comment['commentMessage'] = $value['commentm'];
+	    			}
+	    			elseif (isset($value['sms']) && $value['sms'] != '' && $value['number'] != '')
+	    			{
+	    				$comment['sendSms'] = $value['number'];
 	    			}
 	    	}
     	}
@@ -369,9 +378,23 @@ class gitReminder
      		
     		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
      		{
-     		     $i++;
-     			try {
+     		    $i++;
+     			try
+     			{
      				$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"],null,$task["assignIssueToUser"]);
+     				
+     				if (isset($task['sendMailNotificationTo']))
+     				{
+     					$this->sendMailNotification($task['sendMailNotificationTo'],"newissue");
+     				}
+     				elseif (isset($task['commentMessage']))
+     				{
+     					$this->createComment($task['issueLink'],$task['commentMessage']);
+     				}
+     				elseif (isset($task['sendSms']))
+     				{
+     					//@todo implement
+     				}
      			}
      			catch (Exception $e)
      			{
@@ -384,7 +407,7 @@ class gitReminder
         }
         if($i>=21)
         {
-        	$this->log->warning("!!More than 20 Issues has been edit!!",$this->tasks);
+        	$this->log->warning("More than 20 Issues has been edit!",$this->tasks);
         }
         return $this;
     }
@@ -400,11 +423,29 @@ class gitReminder
      * @param int $errorCode
      * @return $issue;
      */
-	public function createComment($repoOwner,$repo,$issueID,$body)
+	public function createComment($ghIssueLink,$body)
 	{
-		$data = array();
-		$data['body'] = $body;
-	   	$this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueID/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
+// 		if (is_int($issueId) && is_string($repo) && is_string($repoOwner))
+		if(is_string($ghIssueLink))
+		{
+			switch($body)
+			{
+				case 'do':
+					$body = 'Pls. do it now';
+					break;
+				case 'wait':
+					$body = 'You\'ve to wait for new instruction';
+					break;
+			}			
+			$data = array();
+			$data['body'] = $body;
+	   		//$this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
+			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
+		}
+		else
+		{
+			echo "DA WAR EIN FEHLER!!!";
+		}
 		return $this;
 	}
 	
@@ -438,8 +479,25 @@ class gitReminder
      * @param string|array $fileOrDb
      * @return gitReminder
      */
-    public function storeTasks($location,$fileOrDb)
+    public function storeTasks($methode,$fileOrDb)
     {
+    	if ($methode == "database" && is_array($fileOrDb))
+    	{
+    		$this->storeTasksInDatabase($dbHost, $dbUser, $dbName, $dbPwd);
+    	}
+    	elseif ($methode == "serialize" && is_string($fileOrDb))
+    	{
+    		$this->loadStoredTasksSerialized($fileOrDb);
+    	}
+    	elseif ($methode == "" && is_string($fileOrDb))
+    	{
+    		$this->loadStoredTasksJson($fileOrDb);
+    	}
+    	else
+    	{
+    		$this->log->error("No Place to load or safe Tasks!",array($methode,$fileOrDb));
+    		$this->sendMailNotification('admin@1601.com', 'error', 'GitReminder findet keinen Speicherplatz!');
+    	}
     	return $this;
     }
     
@@ -568,10 +626,51 @@ class gitReminder
      * @param $link
      * @return $this
      */
-    public function sendMailNotification($mailadress)
-    {
+    public function sendMailNotification($mailadress,$text,$error = NULL)
+    {    	
+    	$header = 	'MIME-Version: 1.0' . "\r\n";
+    	$header .=	'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+    	$header .=	"To: <$mailadress>" . "\r\n";
+    	$header .= 	'From: GitReminder <reminder@gitreminder.com>' . "\r\n";
     	
-        return $this;
+    	
+    	
+    	$message = "
+    		<html>
+    		<head>
+    		<title>New Notifications</title>
+    		</head>
+    		<body>";
+    	
+    	
+    	if ($text == "newissue")
+    	{
+    		$subject = 	"[GitReminder] Pls. check your news";
+    		$message .= "
+    			Hello $mailadress,<br><br> Pls. check https://github.com and your notifications!<br><br>Have a nice day :)<br>GitReminder
+    			";
+    	}
+    	elseif ($text == "error")
+    	{
+    		$subject = 	"[GitReminder] Error";
+    		$message .= "
+    		Hello $mailadress,<br><br>There is an error.<br>
+    		Pls. check this message:<br><br>
+    		\"$error\"
+    		<br><br>
+    		Have a nice day<br>
+    		GitReminder
+    		";
+    	}
+    	
+    	$message .= "
+    			</body>
+    			</html>
+    			";
+    	
+    	mail($mailadress, $subject, $message,$header);
+        
+    	return $this;
     }
 
 	
@@ -581,7 +680,8 @@ class gitReminder
     	print_r($this->tasks);
     	echo "</pre>";
     	
-    	$this->log->notice("------NOW GITREMINDER FINISHED TO WORK!----");
+    	
+    	$this->log->notice("THE END");
     	return $this;
     }
     
