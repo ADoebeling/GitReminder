@@ -1,5 +1,32 @@
 <?php 
 
+/*************************************/
+/*****    GitReminder need:   ********/
+/*************************************/
+const PATH_TO_FILE = '../data/';
+
+//Where to safe tasks?
+const DB_HOST = '';
+const DB_USER = '';
+const DB_NAME = '';
+const DB_PASS = '';
+//or
+const FILE_SERIALIZED = '';
+//or
+const FILE_JSON = '';
+
+
+//GitReminder:
+const GITREMINDER_NAME = '';
+const GITREMINDER_PASSWD = '';
+
+
+
+/**************** THE END **************/
+
+
+
+
 //Endungen Const
 const END_OF_SERIALIZE_FILE = 'phpserialize';
 const END_OF_JASON_FILE = 'json';
@@ -31,25 +58,27 @@ const COMMENT_BY_LOGGASCH = 'MY CREATOR AND MASTER IS LOGGASCH';
 const COMMENT_TRY_IT_AGAIN = 'There was a mistake pls. try it again.';
 
 
-//Send Mail
-const MAIL_HEADER = '
-		MIME-Version: 1.0 \r\n
-		Content-type: text/html; charset=iso-8859-1 \r\n
-		From: GitReminder <reminder@gitreminder.com> \r\n';
+//Mailadress
+const ADMIN_MAIL = 'admin@1601.com';
 
-const MAIL_MESSAGE_START = '
+
+//Send Mail
+const MAIL_HEADER = 'MIME-Version: 1.0' . "\r\n".'Content-type: text/html; charset=iso-8859-1' . "\r\n".'From: GitReminder <reminder@gitreminder.com>'."\r\n";
+
+const MAIL_MESSAGE_START = "
 			<html>
     		<head>
-    		<title>New Notifications</title>
+    		<title>Mail from GitReminder</title>
     		</head>
-    		<body>';
+    		<body>";
 
-const MAIL_MESSAGE_END = '
+const MAIL_MESSAGE_END = "
 				</body>
-    			</html>';
+    			</html>";
 
-const MAIL_ISSUE_SUBJECT = '[GitReminder] Pls. check your news';
-const MAIL_ISSUE_TEXT = 'Hello,<br><br> Pls. check https://github.com and your notifications!<br><br>Have a nice day :)<br>GitReminder';
+const MAIL_ISSUE_SUBJECT = "[GitReminder] Pls. check your news";
+const MAIL_ISSUE_TEXT = "Hello,<br><br> Pls. check https://github.com and your notifications!<br><br>Have a nice day :)<br>GitReminder";
 
-const MAIL_ERROR_SUBJECT = '[GitReminder] Error';
-const MAIL_ERROR_TEXT = 'Hello,<br><br>There is an error.<br>Pls. check this message:<br><br>';
+const MAIL_ERROR_SUBJECT = "[GitReminder] Error";
+const MAIL_ERROR_TEXT = "Hello,<br><br>There is an error.<br>Pls. check this message:<br><br>";
+const MAIL_NO_ERROR_SEND = 'There was no error in the mail!';

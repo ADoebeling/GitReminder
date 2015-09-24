@@ -4,7 +4,6 @@
 	<meta http-equiv="refresh" content="4200000" />
 	<meta name="titel" title="GitReminder Do IT" />
 	<meta name="description" content="Free GitReminder for GitHub Pls. check GitHub.com an search GitReminder" />
-	<meta onmousemove="HELLO" />
 </head>
 <body>
 <?php

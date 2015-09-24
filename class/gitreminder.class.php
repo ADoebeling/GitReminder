@@ -97,17 +97,16 @@ class gitReminder
      * @param $ghApiToken
      * @return $this
      */
-    public function setGithubAccount ($ghUser, $ghApiToken)
+    public function setGithubAccount ($ghUser, $ghPassOrToken)
     {
     	
     	$this->githubRepo = new GitHubClient(); 
-        $this->githubRepo->setCredentials($ghUser, $ghApiToken);
+        $this->githubRepo->setCredentials($ghUser, $ghPassOrToken);
         return $this;
     }
 
     /**
      *Create folder and data structure
-     *@todo implement
      */
 	private function createDataStructure()
 	{
@@ -130,7 +129,6 @@ class gitReminder
     
     
     /**
-     * @todo implement
      * @param string $methode
      * @param string|array $fileOrDb
      * @return gitReminder
@@ -819,35 +817,17 @@ class gitReminder
     }
 
     
-    
-    
-    /**
-     * (Reopen and) assign a issue to the given user
-     *
-     * @todo Implement;
-     * @param $link
-     * @param $reopenGhIssue = true
-     * @return $this
-     */
-    public function assignGhIssue($link, $reopenGhIssue = true)
-    {
-        return $this;
-    }
-
-    
 
     
     /**
      * Send a mail-notification
-     *
-     * @todo Implement
      * @param $link
      * @return $this
      */
-    public function sendMailNotification($mailadress,$text,$error = NULL)
+    public function sendMailNotification($mailadress,$text,$error = MAIL_NO_ERROR_SEND)
     {    	
     	$header = MAIL_HEADER;
-    	
+    	$header .= 'To: <'.$mailadress.'>' . "\r\n";
     	
     	
     	$message = MAIL_MESSAGE_START;
