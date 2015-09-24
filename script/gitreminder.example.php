@@ -1,12 +1,9 @@
 <?php
-
 require_once('../class/gitreminder.class.php');
-
+require_once '../config/config.php';
 $gitReminder = new gitReminder();
-$gitReminder -> setGithubAccount($ghUser, $password)
-             -> loadStoredTasks()
-             -> loadGhNotifications($ghUser)
-             -> parseSourceText($ghUser)
+$gitReminder -> setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
+             -> loadGhNotifications(GITREMINDER_NAME)
+             -> parseSourceText(GITREMINDER_NAME)
              -> process()
-             -> storeTasksSerialized();
 ?>

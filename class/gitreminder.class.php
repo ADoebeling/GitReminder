@@ -57,6 +57,13 @@ class gitReminder
 
     
     /**
+     * The Path or DB informations
+     * @var string or array $fileOrDb
+     */
+    private $fileOrDb;
+    
+    
+    /**
      * Array of Folderstructure
      * @var array $folderStructure
      */
@@ -68,13 +75,7 @@ class gitReminder
      * @var array $dataStructure
      */
     private $dataStructure = array(self::FILE_TASKS_SERIALIZED,self::FILE_TASKS_JSON);
-    
 
-    /**
-     * Var to create the absolute path of the safe file.
-     * @var string $fileTasksAbsolute
-     */
-    private $fileTasksAbsolute;
     
     
     
@@ -83,10 +84,23 @@ class gitReminder
      */
     public function __construct()
     {
+    	if (defined('DB_HOST') && DB_HOST != '')
+    	{
+    		$this->fileOrDb = array('dbHost' => DB_HOST,'dbUser' => DB_USER,'dbName' => DB_NAME,'dbPass' => DB_PASS);
+    	}
+    	elseif (defined('FILE_JSON') && FILE_JSON != '')
+    	{
+    		$this->fileOrDb = FILE_JSON;
+    	}
+    	elseif (defined('FILE_SERIALIZED') && FILE_SERIALIZED != '')
+    	{
+    		$this->fileOrDb = FILE_SERIALIZED;
+    	}
+    	
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
     	$this->createDataStructure();
-    	//$this->loadAndStoreTasks();
+    	$this->loadAndStoreTasks($this->fileOrDb);
     	return $this;
     }
 
@@ -125,8 +139,7 @@ class gitReminder
 			}
 		}
 	}
-    
-    
+
     
     /**
      * @param string $methode
@@ -139,40 +152,39 @@ class gitReminder
     	{
     		if (is_array($fileOrDb))
     		{
-    			//@todo implement
-    			$this->loadStoredTasksFromDatabase();
+    			$this->loadStoredTasksFromDatabase($fileOrDb['dbHost'],$fileOrDb['dbUser'],$fileOrDb['dbName'],$fileOrDb['dbPass']);
     		}
     		elseif (is_string($fileOrDb))
     		{
-    			$this->fileTasksAbsolute = realpath($fileOrDb);
     			$temp = explode('.', $fileOrDb);
     			$endung = $temp[(count($temp)-1)];
     			if ($endung == END_OF_SERIALIZE_FILE)
     			{
     				$this->loadStoredTasksSerialized($fileOrDb);
+    				$this->fileOrDb = realpath($fileOrDb);
     			}
     			elseif ($endung == END_OF_JASON_FILE)
     			{
     				$this->loadStoredTasksJson($fileOrDb);
+    				$this->fileOrDb = realpath($fileOrDb);
     			}
     			else
     			{
-    				$this->fileTasksAbsolute = realpath(self::FILE_TASKS_SERIALIZED);
+    				$this->fileOrDb = realpath(self::FILE_TASKS_SERIALIZED);
     				$this->storeTasksSerialized();
     			}
     		}
     		else
     		{
-    			$this->fileTasksAbsolute = realpath(self::FILE_TASKS_SERIALIZED);
+    			$this->fileOrDb = realpath(self::FILE_TASKS_SERIALIZED);
     			$this->loadStoredTasksSerialized();
     		}
     	}
     	else
     	{
     		if (is_array($fileOrDb))
-    		{
-    			//@todo implement    			
-    			$this->storeTasksInDatabase($dbHost, $dbUser, $dbName, $dbPwd);
+    		{  			
+    			$this->storeTasksInDatabase($fileOrDb['dbHost'],$fileOrDb['dbUser'],$fileOrDb['dbName'],$fileOrDb['dbPass']);
     		}
     		elseif (is_string($fileOrDb))
     		{
@@ -267,8 +279,7 @@ class gitReminder
     	
     	return $this;
     }
-    
-    
+
     
     /**
      * Load encoded tasks from last run
@@ -278,13 +289,13 @@ class gitReminder
      */
     public function loadStoredTasksJson($jFile = self::FILE_TASKS_JSON)
     {
-    	if (!file_exists($file))
+    	if (!file_exists($jFile))
     	{
-    		throw new Exception("File '$jfile' not found!",404);
+    		throw new Exception("File '$jFile' not found!",404);
             $this->log->warning(FILE_NOT_FOUND.$jFile);
     	}
     	 
-    	array_push($this->tasks,json_decode(file_get_contents($jFile)));
+    	$this->tasks = array_merge($this->tasks,json_decode(file_get_contents($jFile)));
     
     	return $this;
     }
@@ -581,9 +592,6 @@ class gitReminder
     
     
     
-    
-    
-    
     /**
      * Write a comment 
      * @param string or array $error
@@ -859,7 +867,7 @@ class gitReminder
     	print_r($this->tasks);
     	echo "</pre>";  	
     	$this->log->notice(NOTICE_END);
-    	//$this->loadAndStoreTasks($this->fileTasksAbsolute);    	
+    	$this->loadAndStoreTasks($this->fileOrDb);    	
     	return $this;
     }
     
