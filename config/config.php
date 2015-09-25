@@ -9,7 +9,7 @@ const PATH_TO_FILE = '../data/';
  const DB_HOST = 'mysql5.1601.com';
  const DB_USER = 'db226796_224';
  const DB_NAME = 'db226796_224';
- const DB_PASS = 'hyKqrv9ks1j';
+ const DB_PASS = '';
 //or
 const FILE_SERIALIZED = PATH_TO_FILE.'tasks.phpserialize';
 //or
@@ -18,7 +18,7 @@ const FILE_JSON = PATH_TO_FILE.'tasks.json';
 
 //GitReminder:
 const GITREMINDER_NAME = 'gh-lb1601com';
-const GITREMINDER_PASSWD = 'TaACbP25';
+const GITREMINDER_PASSWD = '';
 
 
 
