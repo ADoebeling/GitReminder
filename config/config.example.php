@@ -42,6 +42,9 @@ const ASSIGN_ISSUE_TO_USER = 'Issue has Assign to a User:';
 const EDIT_MORE_THAN_20_ISSUES = 'More than 20 Issues has been edit!';
 const CANT_CREATE_COMMENT = 'GitReminder cant create a Comment for ';
 const CANT_LOAD_ISSUE = 'GitReminder cant load an Issue for ';
+const LOAD_FROM_DATABASE = 'GitReminder load tasks from Database';
+const LOAD_FROM_PHPSERIALIZED_FILE = 'GitReminder load tasks from .phpserialized file';
+const LOAD_FROM_JASON = 'GitReminder load tasks from json file';
 
 
 //Error Messages

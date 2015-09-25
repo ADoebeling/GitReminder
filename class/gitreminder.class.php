@@ -67,7 +67,7 @@ class gitReminder
      * Array of Folderstructure
      * @var array $folderStructure
      */
-    private $folderStructure = array('../data');
+    private $folderStructure = array('../data','../logs');
     
     
     /**
@@ -83,23 +83,27 @@ class gitReminder
      * Initialize github- and logger-class
      */
     public function __construct()
-    {
+    {    	
+    	$this->log = new log();
+    	$this->log->notice(NOTICE_START);
+    	$this->createDataStructure();
+    	
     	if (defined('DB_HOST') && DB_HOST != '')
     	{
     		$this->fileOrDb = array('dbHost' => DB_HOST,'dbUser' => DB_USER,'dbName' => DB_NAME,'dbPass' => DB_PASS);
-    	}
-    	elseif (defined('FILE_JSON') && FILE_JSON != '')
-    	{
-    		$this->fileOrDb = FILE_JSON;
+    		$this->log->notice(LOAD_FROM_DATABASE);
     	}
     	elseif (defined('FILE_SERIALIZED') && FILE_SERIALIZED != '')
     	{
     		$this->fileOrDb = FILE_SERIALIZED;
+    		$this->log->notice(LOAD_FROM_PHPSERIALIZED_FILE);
+    	}
+    	elseif (defined('FILE_JSON') && FILE_JSON != '')
+    	{
+    		$this->fileOrDb = FILE_JSON;
+    		$this->log->notice(LOAD_FROM_JASON);
     	}
     	
-    	$this->log = new log();
-    	$this->log->notice(NOTICE_START);
-    	$this->createDataStructure();
     	$this->loadAndStoreTasks($this->fileOrDb);
     	return $this;
     }
@@ -171,7 +175,7 @@ class gitReminder
     			else
     			{
     				$this->fileOrDb = realpath(self::FILE_TASKS_SERIALIZED);
-    				$this->storeTasksSerialized();
+    				$this->loadStoredTasksSerialized();
     			}
     		}
     		else
@@ -308,14 +312,6 @@ class gitReminder
      */
     public function loadGhNotifications($nameGitReminder = self::NAME_OF_GITREMINDER)
     {
-    	// @TODO: Find methode to read current notifications
-    	// @TODO: Don't load unnecessary api-urls to make the json smaller
-    	// This is quite ugly, but it's the only way we found to get access to
-    	// a list of all notifications including the html_url and fe_issue_id
-    	// all methodes within githubRepo->activity->notifications->listYourNotifications()[x] 
-    	// are protected so we could not load them from our position.
-  	
-    	
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
     	
@@ -417,8 +413,7 @@ class gitReminder
     	//Mark notifications as read.
     	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
     	
-
-		return $this;
+    	return $this;
 	}
 	
 	
@@ -434,7 +429,7 @@ class gitReminder
     {
     	foreach ($this->tasks as &$comment)
     	{
-    		if (isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "")
+    		if ((isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "") && isset($comment['sourceText']))
     		{
 					//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
 	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/",$comment['sourceText'],$value);
@@ -531,6 +526,10 @@ class gitReminder
 	    				$comment['sendMailNotificationTo'] = '0';
 	    				$comment['commentMessage'] = '0';
 	    			}
+	    	}
+	    	else
+	    	{
+	    		$comment["assignIssueToUser"] = $comment['ghRepoUser'];
 	    	}
     	}
     	return $this;
