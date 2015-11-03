@@ -10,10 +10,6 @@ const DB_HOST = ''; //Database Host
 const DB_USER = ''; //Database User
 const DB_NAME = ''; //Database Name
 const DB_PASS = ''; //Database Password
-//or
-const FILE_SERIALIZED = PATH_TO_FILE.''; //Name of .phpserialize File in "data"
-//or
-const FILE_JSON = PATH_TO_FILE.''; //Name of .json File in "data"
 
 
 //GitReminder:
@@ -25,11 +21,6 @@ const GITREMINDER_PASSWD = ''; // GitReminder Userpassword or Token
 /**************** THE END **************/
 
 
-
-
-//Endungen Const
-const END_OF_SERIALIZE_FILE = 'phpserialize';
-const END_OF_JASON_FILE = 'json';
 
 //Log Messages
 const NOTICE_START = 'Start';
@@ -62,7 +53,7 @@ const COMMENT_TRY_IT_AGAIN = 'There was a mistake pls. try it again.';
 
 
 //Mailadress
-const ADMIN_MAIL = 'admin@1601.com';
+const ADMIN_MAIL = ''; // Mailadress like mail@admin.com
 
 
 //Send Mail

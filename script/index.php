@@ -6,12 +6,16 @@
 	<meta name="description" content="Free GitReminder for GitHub Pls. check GitHub.com an search GitReminder" />
 </head>
 <body>
-<?php
 
-error_reporting (1);
-error_reporting(E_ALL);
-include 'gitreminder.php';
+	<?php
+		if (!isset($_GET['pwd']))
+		{
+			die("Da fehlt etwas!");
+		}
+		error_reporting (1);
+		error_reporting(E_ALL);
+		include 'gitreminder.php';
+	?>
 
-?>
 </body>
 </html>

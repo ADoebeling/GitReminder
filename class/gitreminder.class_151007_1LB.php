@@ -12,18 +12,32 @@ require_once '../config/config.php';
  * that allows you to get reminded/notified about planned
  * issues
  *
- * @author      Lukas Beck <lb@1601.com>
  * @author      Andreas Doebeling <ad@1601.com>
+ * @author      Lukas Beck <lb@1601.com>
  * @copyright   1601.communication gmbh
  * @license     CC-BY-SA | https://creativecommons.org/licenses/by-sa/3.0
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
  * @link        http://www.1601.com
- * @version     0.1.151103_1lb
+ * @version     0.1.150908_1lb
  */
 class gitReminder
 {
+    
+	
+	
+	
+	/**
+     * @const string FILE_TASKS_SERIALIZED Default-path for stored, serialized tasks
+     */
+    const FILE_TASKS_SERIALIZED = '../data/tasks.phpserialize';
+    
+    /**
+     * @const string FILE_TASKS_JSON Default-path for stored and encode tasks
+     */
+    const FILE_TASKS_JSON = '../data/tasks.json';
 
+    
     /**
      * @const string NAME_OF_GITREMINDER Default name of GitHub-User
      */
@@ -35,10 +49,6 @@ class gitReminder
      */
     private $tasks = array();
     
-    /**
-     * An Array to check if the same Task has been executed.
-     * @var array $oldTasks
-     */
     private $oldTasks = array();
     
     
@@ -50,58 +60,64 @@ class gitReminder
 
     
     /**
+     * The Path or DB informations
+     * @var string or array $fileOrDb
+     */
+    private $fileOrDb;
+    
+    
+    /**
      * Array of Folderstructure
      * @var array $folderStructure
      */
-    private $folderStructure = array('../logs');
+    private $folderStructure = array('../data','../logs');
     
-  
+    
+    /**
+     * Array of Datastructure
+     * @var array $dataStructure
+     */
+    private $dataStructure = array(self::FILE_TASKS_SERIALIZED,self::FILE_TASKS_JSON);
+
+    
     
     
     /**
      * Initialize github- and logger-class
      */
     public function __construct()
-    {   
-    	$this->createDataStructure();
+    {    	
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
-    	
-    	$this->dbConnection();
-    	
-    	var_dump($this->oldTasks);
-    	return $this;
-    }
-    
-    
-    protected function dbConnection($dbHost = DB_HOST)
-    {
-
+    	$this->createDataStructure();
     	
     	if (defined('DB_HOST') && DB_HOST != '')
     	{
-    		$this->loadStoredTasksFromDatabase(DB_HOST, DB_USER, DB_NAME, DB_PASS);
-    		$this->loadOldGitReminderNotification(DB_HOST, DB_USER, DB_NAME, DB_PASS);
-    		$this->createDB(DB_HOST, DB_USER, DB_NAME, DB_PASS);
-    		
-//     		$mysql = new mysqli();
-//     		$mysql->query($link, $query);
+    		$this->fileOrDb = array('dbHost' => DB_HOST,'dbUser' => DB_USER,'dbName' => DB_NAME,'dbPass' => DB_PASS);
+    		$this->log->notice(LOAD_FROM_DATABASE);
     	}
-    	else
+    	elseif (defined('FILE_SERIALIZED') && FILE_SERIALIZED != '')
     	{
-    		$this->log->error(CONNECTION_FAILED_DATABASE);
-    		die(USE_DATABASE);
+    		$this->fileOrDb = FILE_SERIALIZED;
+    		$this->log->notice(LOAD_FROM_PHPSERIALIZED_FILE);
     	}
+    	elseif (defined('FILE_JSON') && FILE_JSON != '')
+    	{
+    		$this->fileOrDb = FILE_JSON;
+    		$this->log->notice(LOAD_FROM_JASON);
+    	}
+    	
+    	$this->loadAndStoreTasks($this->fileOrDb);
     	return $this;
     }
 
-	/**
-	 * Login at github.com-API
-	 * @param $ghUser
-	 * @param $ghPassOrToken
-	 * @return $this
-	 * @throws GitHubClientException
-	 */
+    /**
+     * Login at github.com-API
+     *
+     * @param $ghUser
+     * @param $ghApiToken
+     * @return $this
+     */
     public function setGithubAccount ($ghUser, $ghPassOrToken)
     {
     	
@@ -110,9 +126,9 @@ class gitReminder
         return $this;
     }
 
-	/**
-	 * Create folder and data structure
-	 */
+    /**
+     *Create folder and data structure
+     */
 	private function createDataStructure()
 	{
 		foreach ($this->folderStructure as $folder)
@@ -122,78 +138,113 @@ class gitReminder
 				mkdir($folder,0777);
 			}
 		}
-		$timestamp = time();
-		$date = date("Y-m",$timestamp);
-		$logFile = "../logs";
-		$logFileData = $logFile."/".$date."_logfolder";
-		if (file_exists($logFile))
+		foreach ($this->dataStructure as $data)
 		{
-			if (!file_exists($logFileData))
+			if(!file_exists($data))
 			{
-				mkdir($logFileData,0777);
+				fopen($data, 'a+');
 			}
 		}
-		
 	}
 
-	/**
-	 * Create a Database
-	 * @param $dbHost
-	 * @param $dbUser
-	 * @param $dbName
-	 * @param $dbPwd
-	 */
-	private function createDB($dbHost, $dbUser, $dbName, $dbPwd)
-	{
-		$dbLink = mysqli_connect($dbHost,$dbUser,$dbPwd,$dbName);
-		
-		
-		$sql = "
-    	CREATE TABLE tasks(
-    			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`taskName` VARCHAR( 150 ) NOT NULL ,
-    			`ghRepoUser` VARCHAR( 150 ) NOT NULL ,
-    			`ghRepo` VARCHAR( 150 ) NOT NULL ,
-    			`ghIssueId` VARCHAR( 150 ) NOT NULL ,
-    			`issueLink` VARCHAR( 150 ) NOT NULL ,
-    			`issueTitel` VARCHAR( 150 ) NOT NULL ,
-    			`assignIssueToUser` VARCHAR( 150 ) NOT NULL ,
-    			`sendMailNotificationTo` VARCHAR( 150 ) NOT NULL,
-    			`commentMessage` VARCHAR( 150 ) NOT NULL,
-    			`sendSms` VARCHAR( 150 ) NOT NULL,
-    			`sourceText` VARCHAR( 250 ) NOT NULL ,
-    			`commentAuthor` VARCHAR( 250 ) NOT NULL ,
-    			`commentCreateDate` VARCHAR( 250 ) NOT NULL ,
-    			`matureDateInDateform` VARCHAR( 250 ) NOT NULL ,
-    			`matureDate` INT(8) NOT NULL,
-    			`commentAId` VARCHAR( 150 ) NOT NULL
-    			)
-    		ENGINE = MYISAM ;";
-		 
-		$erg = mysqli_query($dbLink, $sql);
-		 
-		$sql = "
-    		CREATE TABLE old_tasks(
-    			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`commentAId` VARCHAR( 150 ) NOT NULL
-    			)
-    		ENGINE = MYISAM ;";
-		 
-		$erg = mysqli_query($dbLink, $sql);
-		
-		
-		mysqli_close($dbLink);
-	}
-
-
-	/**
-	 * Load stored task from Database
-	 * @param $dbHost
-	 * @param $dbUser
-	 * @param $dbName
-	 * @param $dbPwd
-	 * @return $this
-	 */
+    
+    /**
+     * @param string $methode
+     * @param string|array $fileOrDb
+     * @return gitReminder
+     */
+    public function loadAndStoreTasks($fileOrDb = NULL)
+    {
+    	if (empty($this->tasks))
+    	{
+    		if (is_array($fileOrDb))
+    		{
+    			$this->loadStoredTasksFromDatabase($fileOrDb['dbHost'],$fileOrDb['dbUser'],$fileOrDb['dbName'],$fileOrDb['dbPass']);
+    		}
+    		elseif (is_string($fileOrDb))
+    		{
+    			$temp = explode('.', $fileOrDb);
+    			$endung = $temp[(count($temp)-1)];
+    			if ($endung == END_OF_SERIALIZE_FILE)
+    			{
+    				$this->loadStoredTasksSerialized($fileOrDb);
+    				$this->fileOrDb = realpath($fileOrDb);
+    			}
+    			elseif ($endung == END_OF_JASON_FILE)
+    			{
+    				$this->loadStoredTasksJson($fileOrDb);
+    				$this->fileOrDb = realpath($fileOrDb);
+    			}
+    			else
+    			{
+    				$this->fileOrDb = realpath(self::FILE_TASKS_SERIALIZED);
+    				$this->loadStoredTasksSerialized();
+    			}
+    		}
+    		else
+    		{
+    			$this->fileOrDb = realpath(self::FILE_TASKS_SERIALIZED);
+    			$this->loadStoredTasksSerialized();
+    		}
+    	}
+    	else
+    	{
+    		if (is_array($fileOrDb))
+    		{  			
+    			$this->storeTasksInDatabase($fileOrDb['dbHost'],$fileOrDb['dbUser'],$fileOrDb['dbName'],$fileOrDb['dbPass']);
+    		}
+    		elseif (is_string($fileOrDb))
+    		{
+    			if (file_exists($fileOrDb))
+    			{
+    				$temp = explode('.', $fileOrDb);
+    				$endung = $temp[(count($temp)-1)];
+    				if ($endung == END_OF_SERIALIZE_FILE)
+    				{
+    					$this->storeTasksSerialized($fileOrDb);
+    				}
+    				elseif ($endung == END_OF_JASON_FILE)
+    				{
+    					$this->storeTasksInJson($fileOrDb);
+    				}
+    				else $this->storeTasksSerialized();
+    			}
+    			else $this->storeTasksSerialized();
+    		}
+    		else $this->storeTasksSerialized();
+    	}
+    	return $this;
+    }
+        
+    
+    
+    
+    /**
+     * Load serialized tasks from last run from serialized php file
+     *
+     * @param $file
+     * @return $this
+     */
+    public function loadStoredTasksSerialized($file = self::FILE_TASKS_SERIALIZED)
+    {
+    	if (!file_exists($file))
+    	{
+    		throw new Exception(FILE_NOT_FOUND,404);
+            $this->log->warning(FILE_NOT_FOUND.$file);
+    	}
+    	$this->tasks = array_merge($this->tasks, unserialize(file_get_contents($file)));
+    
+        return $this;
+    }
+    
+    
+    /**
+     * Load stored task from Database
+     * @param string $dbHost
+     * @param string $dbUser
+     * @param string $dbName
+     * @param string $dbPwd
+     */
     public function loadStoredTasksFromDatabase($dbHost, $dbUser, $dbName, $dbPwd)
     {
     	$dbLink = mysqli_connect($dbHost,$dbUser,$dbPwd,$dbName);
@@ -223,45 +274,64 @@ class gitReminder
     				'commentAuthor' => $dbLine['commentAuthor'],
     				'commentCreateDate' => $dbLine['commentCreateDate'],
     				'matureDateInDateform' => $dbLine['matureDateInDateform'],
-    				'matureDate' => $dbLine['matureDate'],			
-    				'commentAId' => $dbLine['commentAId'],
+    				'matureDate' => $dbLine['matureDate'],  				
     				);
     		$this->tasks[$dbLine['taskName']]['ghIssueId'] = intval($this->tasks[$dbLine['taskName']]['ghIssueId']);
     	}
     	
+    	    	 
+    	$check = "SELECT * FROM old_tasks";
+    	$dbAnswer = mysqli_query($dbLink, $check);
+    	while ($dbLine = mysqli_fetch_assoc($dbAnswer))
+    	{
+    		$this->oldTasks[$dbLine['taskName']] = $dbLine['sourceText'];
+    		$i++;
+    	}
+    	foreach ($oldTasks as $oldTask)
+    	{
+    		if ($oldTask[0] != $task['sourceText'])
+    		{
+    			$sourceText = $task['sourceText'];
+    			$timestamp = time();
+    			$insertTwo = "INSERT INTO old_tasks (
+    			taskName,
+    			sourceText,
+    			timestamp
+    			) VALUES (
+    			'$taskName',
+    			'$sourceText',
+    			'$timestamp'
+    			)";
+    			mysqli_query($dbLink,$insertTwo);
+    		}
+    		 
+    	}
+    	
     	mysqli_close($dbLink);
     	
+    	return $this;
+    }
+
+    
+    /**
+     * Load encoded tasks from last run
+     *
+     * @param $jfile
+     * @return $this
+     */
+    public function loadStoredTasksJson($jFile = self::FILE_TASKS_JSON)
+    {
+    	if (!file_exists($jFile))
+    	{
+    		throw new Exception("File '$jFile' not found!",404);
+            $this->log->warning(FILE_NOT_FOUND.$jFile);
+    	}
+    	 
+    	$this->tasks = array_merge($this->tasks,json_decode(file_get_contents($jFile)));
+    
     	return $this;
     }
   
-    
-    /**
-     * 
-     */
-    private function loadOldGitReminderNotification($dbHost, $dbUser, $dbName, $dbPwd)
-    {
-    	$dbLink = mysqli_connect($dbHost,$dbUser,$dbPwd,$dbName);
-    	
-    	if (mysqli_connect_errno())
-    	{
-    		die(CONNECTION_FAILED_DATABASE);
-    	}
-    	
-    	$check = "SELECT * FROM old_tasks";
-    	$dbAnswer = mysqli_query($dbLink, $check);
-    	$i = 0;
-    	while ($dbLine = mysqli_fetch_assoc($dbAnswer))
-    	{
-    		$this->oldTasks[$i] = $dbLine['commentAId'];
-    		$i++;
-    	}
-    	
-    	mysqli_close($dbLink);
-    	
-    	return $this;
-    }
-    
-    
     
     /**
      * Load unread GitHub-Notifications and store them to $this->tasks[]
@@ -272,7 +342,8 @@ class gitReminder
     {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
-    	    	
+    	
+    	
         if(count($notifications)>=30)$this->log->warning(CALLED_TOO_OFTEN,$notifications);
         
     	foreach ($notifications as $element)
@@ -323,7 +394,6 @@ class gitReminder
 	    		$nextComments = $commentObject->getBody();
 	    		$nextCommentAuthor = $commentObject->getuser()->getlogin();
 	    		$nextCommentDate = $commentObject->getCreatedAt();
-	    		$nextCommentAId = $commentObject->getId();
 	    		$pos = strpos($nextComments, $nameGitReminder);
 	    		 
 	    		//If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
@@ -332,7 +402,6 @@ class gitReminder
 					$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
 	    			$this->tasks[$taskIndex]['commentAuthor'] = trim($nextCommentAuthor);
 	    			$this->tasks[$taskIndex]['commentCreateDate'] = trim($nextCommentDate);
-	    			$this->tasks[$taskIndex]['commentAId'] =  trim($nextCommentAId);
 	    			break;
 	    		}
 	    		
@@ -354,9 +423,6 @@ class gitReminder
     			//Here we will get the create date of the first comment
     			$firstCommentDate = $firstComment->getCreatedAt();
     			
-    			//Get the Absolute Comment ID
-    			$firstCommentAId = $firstComment->getId();
-    			
     			//Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment
     			$pos = strpos($firstCommentBody, $nameGitReminder);
     				
@@ -366,7 +432,6 @@ class gitReminder
     				$this->tasks[$taskIndex]['sourceText'] = trim($firstCommentBody);
     				$this->tasks[$taskIndex]['commentAuthor'] = trim($firstCommentAuthor);
     				$this->tasks[$taskIndex]['commentCreateDate'] = trim($firstCommentDate);
-    				$this->tasks[$taskIndex]['commentAId'] =  trim($firstCommentAId);
     			}	
     		}
     		
@@ -490,6 +555,10 @@ class gitReminder
 	    				$comment['commentMessage'] = '0';
 	    			}
 	    	}
+	    	else
+	    	{
+	    		$comment["assignIssueToUser"] = $comment['ghRepoUser'];
+	    	}
     	}
     	return $this;
     }
@@ -509,35 +578,27 @@ class gitReminder
         $i = 0;
     	foreach ($this->tasks as $taskLink => &$task)
     	{
+    		
+     		if (!isset($task["matureDate"])) $task["matureDate"] = time();
      		
     		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
      		{
      		    $i++;
      			try
      			{
-     				if (array_search($task['commentAId'], $this->oldTasks))
+     				$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"],null,$task["assignIssueToUser"]);
+     				
+     				if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0')
      				{
-     					echo USED_BEFORE;
-     					$this->log->notice(USED_BEFORE,$task);
+     					$this->sendMailNotification($task['sendMailNotificationTo'],"newissue");
      				}
-     				else
+     				elseif (isset($task['commentMessage']) && $task['commentMessage'] != '0')
      				{
-     					$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"],null,$task["assignIssueToUser"]);
-
-	     				if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0')
-	     				{
-	     					$this->sendMailNotification($task['sendMailNotificationTo'],"newissue");
-	     				}
-	     				elseif (isset($task['commentMessage']) && $task['commentMessage'] != '0')
-	     				{
-	     					$this->createComment($task['issueLink'],$task['commentMessage']);
-	     				}
-	     				elseif (isset($task['sendSms']) && $task['sendSms'] != '0')
-	     				{
-	     					//@todo implement
-	     					//if (!isset($task["matureDate"])) $task["matureDate"] = time();
-	     				}
-	     				array_push($this->oldTasks, $task['commentAId']);
+     					$this->createComment($task['issueLink'],$task['commentMessage']);
+     				}
+     				elseif (isset($task['sendSms']) && $task['sendSms'] != '0')
+     				{
+     					//@todo implement
      				}
      			}
      			catch (Exception $e)
@@ -555,14 +616,15 @@ class gitReminder
         }
         return $this;
     }
-
-
-	/**
-	 * Create a Comment in GH
-	 * @param $ghIssueLink
-	 * @param $body
-	 * @return $this
-	 */
+    
+    
+    
+    /**
+     * Write a comment 
+     * @param string or array $error
+     * @param int $errorCode
+     * @return $issue;
+     */
 	public function createComment($ghIssueLink,$body)
 	{
 		if(is_string($ghIssueLink) && isset($body))
@@ -587,7 +649,7 @@ class gitReminder
 			}			
 			$data = array();
 			$data['body'] = $body;
-			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
+			$writtenComment = $this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
 		}
 		else
 		{
@@ -595,13 +657,12 @@ class gitReminder
 		}
 		return $this;
 	}
-
+	
 	/**
 	 * Load an Issue with all important informations.
-	 * @param $repoOwner
-	 * @param $repo
-	 * @param $issueId
-	 * @return bool
+	 * @param string $repoOwner
+	 * @param string $repo
+	 * @param integer $issueId
 	 */
 	public function getIssue($repoOwner,$repo,$issueId)
 	{
@@ -619,16 +680,42 @@ class gitReminder
 		
 		return $issue;
 	}
-
-
-	/**
-	 * Stores the current $tasks-array in a database
-	 * @param $dbHost
-	 * @param $dbUser
-	 * @param $dbName
-	 * @param $dbPwd
-	 * @return $this
-	 */
+	
+    
+    /**
+     * Stores the current $tasks-array as serialized
+     * array at the given location
+     * @todo implement file put contents exeption.
+     * 
+     * @param $file
+     * @return $this
+     */
+    public function storeTasksSerialized($file = self::FILE_TASKS_SERIALIZED)
+    {
+    	if (!file_exists($file))
+    	{
+    	    $this->log->warning(FILE_NOT_FOUND,array($file));
+    		throw new Exception(FILE_NOT_FOUND,404);
+    	}
+    	
+    	file_put_contents($file, serialize($this->tasks));
+    	
+        return $this;
+    }
+    
+    
+    
+    
+    
+    
+    /**
+     * Stores the current $tasks-array in a database
+     * @param $dbHost
+     * @param $dbUser
+     * @param $dbName
+     * @param $dbPwd
+     * 
+     */
     public function storeTasksInDatabase($dbHost,$dbUser,$dbName,$dbPwd)
     {
     	$dbLink = mysqli_connect($dbHost,$dbUser,$dbPwd,$dbName);
@@ -646,7 +733,39 @@ class gitReminder
     	$erg = mysqli_query($dbLink, $delete);
     	
     	
+    	$sql = "
+    	CREATE TABLE tasks(
+    			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    			`taskName` VARCHAR( 150 ) NOT NULL ,
+    			`ghRepoUser` VARCHAR( 150 ) NOT NULL ,
+    			`ghRepo` VARCHAR( 150 ) NOT NULL ,
+    			`ghIssueId` VARCHAR( 150 ) NOT NULL ,
+    			`issueLink` VARCHAR( 150 ) NOT NULL ,
+    			`issueTitel` VARCHAR( 150 ) NOT NULL ,
+    			`assignIssueToUser` VARCHAR( 150 ) NOT NULL ,
+    			`sendMailNotificationTo` VARCHAR( 150 ) NOT NULL,
+    			`commentMessage` VARCHAR( 150 ) NOT NULL,
+    			`sendSms` VARCHAR( 150 ) NOT NULL,
+    			`sourceText` VARCHAR( 250 ) NOT NULL ,
+    			`commentAuthor` VARCHAR( 250 ) NOT NULL ,
+    			`commentCreateDate` VARCHAR( 250 ) NOT NULL ,
+    			`matureDateInDateform` VARCHAR( 250 ) NOT NULL ,
+    			`matureDate` INT(8) NOT NULL
+    			)
+    		ENGINE = MYISAM ;";
     	
+    	$erg = mysqli_query($dbLink, $sql);
+    	
+    	$sql = "
+    		CREATE TABLE old_tasks(
+    			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    			`taskName` VARCHAR( 150 ) NOT NULL ,
+    			`sourceText` VARCHAR( 250 ) NOT NULL ,
+    			`timestamp` INT(8) NOT NULL
+    			)
+    		ENGINE = MYISAM ;";
+    	
+    	$erg = mysqli_query($dbLink, $sql);
     			
     	foreach ($this->tasks as $taskName=>$task)
     	{
@@ -661,7 +780,6 @@ class gitReminder
     		$commentAuthor = $task['commentAuthor'];
     		$commentCreateDate = $task['commentCreateDate'];
     		$matureDateInDateform = $task['matureDateInDateform'];
-    		$commentAId = $task['commentAId'];
     		
     		
     		if (isset($task['sendMailNotificationTo']))
@@ -681,83 +799,79 @@ class gitReminder
     		
     		// mysql_query("Insert into 'tasks' set name='$name', wert='$wert', letzterwert=22")
 			
-			$insert = "
-			INSERT INTO tasks 
-			(
-				taskName,
-				ghRepoUser,
-				ghRepo,
-				ghIssueId,
-				issueLink,
-				issueTitel,
-				assignIssueToUser,
-				sendMailNotificationTo,
-				commentMessage,
-				sendSms,
-				sourceText,
-				commentAuthor,
-				commentCreateDate,
-				matureDateInDateform,
-				matureDate,
-				commentAId
-			) 
-			VALUES 
-			(
-				'$taskName',
-				'$ghRepoUser',
-				'$ghRepo',
-				'$ghIssueId',
-				'$ghIssueLink',
-				'$ghIssueTitel',
-				'$assignIssueToUser',
-				'$sendMailNotificationTo',
-				'$commentMessage',
-				'$sms',
-				'$sourceText',
-				'$commentAuthor',
-				'$commentCreateDate',
-				'$matureDateInDateform',
-				'$matureDate',
-				'$commentAId'
+			$insert = "INSERT INTO tasks (
+			taskName,
+			ghRepoUser,
+			ghRepo,
+			ghIssueId,
+			issueLink,
+			issueTitel,
+			assignIssueToUser,
+			sendMailNotificationTo,
+			commentMessage,
+			sendSms,
+			sourceText,
+			commentAuthor,
+			commentCreateDate,
+			matureDateInDateform,
+			matureDate
+			) VALUES (
+			'$taskName',
+			'$ghRepoUser',
+			'$ghRepo',
+			'$ghIssueId',
+			'$ghIssueLink',
+			'$ghIssueTitel',
+			'$assignIssueToUser',
+			'$sendMailNotificationTo',
+			'$commentMessage',
+			'$sms',
+			'$sourceText',
+			'$commentAuthor',
+			'$commentCreateDate',
+			'$matureDateInDateform',
+			'$matureDate'
 			)";
     		
     		mysqli_query($dbLink,$insert);
     		
+    		$oldTasks = array();
+    		$i = 0;
+    		
+    	
     	}
     	mysqli_close($dbLink);
+    	return $this;
+    }
+    
+
+    
+    
+    /**
+     * Stores the current $tasks-array in a json-file
+	 * @param $jFile
+	 * @todo implement file put contents exeption.
+     */
+    public function storeTasksInJson($jFile = FILE_TASKS_JSON)
+    {
+    	if (!file_exists($jFile))
+    	{
+    	    $this->log->warning(FILE_NOT_FOUND,array($jFile));
+    		throw new Exception(FILE_NOT_FOUND,404);
+    	}
+    	file_put_contents($jFile, json_encode($this->tasks,JSON_UNESCAPED_UNICODE));
+    	
     	return $this;
     }
 
     
-    private function storeOldGitReminderNotification($dbHost,$dbUser,$dbName,$dbPwd)
-    {
-    	$dbLink = mysqli_connect($dbHost,$dbUser,$dbPwd,$dbName);
-    	
-    	$delete = "DELETE FROM old_tasks";
-    	mysqli_query($dbLink, $delete);
-    	
-    	foreach ($this->oldTasks as $oldTask)
-    	{
-	    	$insertTwo = "INSERT INTO old_tasks (
-	    	commentAId
-	    	) VALUES (
-	    	'$oldTask'
-	    	)";
-	    	mysqli_query($dbLink,$insertTwo);
-    	}
-    	mysqli_close($dbLink);
-    	$oldTasks = array();
-    	return $this;
-    }
 
-
-	/**
-	 * Send a mail-notification
-	 * @param $mailadress
-	 * @param $text
-	 * @param string $error
-	 * @return $this
-	 */
+    
+    /**
+     * Send a mail-notification
+     * @param $link
+     * @return $this
+     */
     public function sendMailNotification($mailadress,$text,$error = MAIL_NO_ERROR_SEND)
     {    	
     	$header = MAIL_HEADER;
@@ -793,8 +907,7 @@ class gitReminder
     	print_r($this->tasks);
     	echo "</pre>";  	
     	$this->log->notice(NOTICE_END);
-    	$this->storeTasksInDatabase(DB_HOST, DB_USER, DB_NAME, DB_PASS);
-    	$this->storeOldGitReminderNotification(DB_HOST, DB_USER, DB_NAME, DB_PASS);
+    	$this->loadAndStoreTasks($this->fileOrDb);
     	return $this;
     }
     

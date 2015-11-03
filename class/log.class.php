@@ -47,8 +47,8 @@ class log
 						
 		$timestamp = time();
 		$datum = date("Y-m-d",$timestamp);
-		
-		$file = self::LOG_PATH."log-".$datum.".txt";
+		$datumMonat = date("Y-m",$timestamp);
+		$file = self::LOG_PATH.$datumMonat."_logfolder/"."log-".$datum.".txt";
 		
 		if (!file_exists($file)) $fp = fopen($file,"x+");
 				
