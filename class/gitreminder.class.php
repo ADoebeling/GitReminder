@@ -66,18 +66,17 @@ class gitReminder
     	$this->createDataStructure();
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
-    	
     	$this->dbConnection();
-    	
-    	var_dump($this->oldTasks);
     	return $this;
     }
-    
-    
+
+	/**
+	 *
+	 * @param string $dbHost
+	 * @return $this
+	 */
     protected function dbConnection($dbHost = DB_HOST)
     {
-
-    	
     	if (defined('DB_HOST') && DB_HOST != '')
     	{
     		$this->loadStoredTasksFromDatabase(DB_HOST, DB_USER, DB_NAME, DB_PASS);
@@ -175,7 +174,8 @@ class gitReminder
 		$sql = "
     		CREATE TABLE old_tasks(
     			`id` INT( 10 ) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`commentAId` VARCHAR( 150 ) NOT NULL
+    			`commentAId` VARCHAR( 150 ) NOT NULL,
+    			`timeId` VARCHAR( 150 ) NOT NULL
     			)
     		ENGINE = MYISAM ;";
 		 
@@ -252,7 +252,7 @@ class gitReminder
     	$i = 0;
     	while ($dbLine = mysqli_fetch_assoc($dbAnswer))
     	{
-    		$this->oldTasks[$i] = $dbLine['commentAId'];
+    		$this->oldTasks[$dbLine['commentAId']] = intval($dbLine['timeId']);
     		$i++;
     	}
     	
@@ -272,7 +272,7 @@ class gitReminder
     {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
-    	    	
+
         if(count($notifications)>=30)$this->log->warning(CALLED_TOO_OFTEN,$notifications);
         
     	foreach ($notifications as $element)
@@ -394,109 +394,103 @@ class gitReminder
     	{
     		if ((isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "") && isset($comment['sourceText']))
     		{
-					//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
-	    			preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/",$comment['sourceText'],$value);
-					
-	    			//If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign
-	    			if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
+				//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
+	    		preg_match("/(?<gitreminder>@$nameGitReminder)\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,2}-\d{1,2}-\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/",$comment['sourceText'],$value);
+
+	    		//If the Value of $value["assignIssueToUser"] is not empty and is set it write the user in $this->tasks[~]["assignIssueToUser"] else the author of the comment is the userToAssign
+	    		if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
+	    		{
+	    			$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
+	    		}
+	    		else
+	    		{
+	    			$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+	    		}
+
+	    		//Convert the createtimeformat into timestamp
+	    		$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
+
+	    		if (isset($value['timeFormat']))$timeFormat = strtolower($value['timeFormat']);
+
+	    		//If the sytax say stop or ... GitReminder will assign in this moment.
+	    		if ($value['matureDate'] == 'stop' ||$value['matureDate'] == 'ignore' ||$value['matureDate'] == 'end' || $value['matureDate'] == 'now')
+				{
+					$value['matureDate'] = 0;
+					$timeFormat = 'm';
+				}
+
+				//Check the timeformat and create the maturedate.
+	    		if ($timeFormat == 'd' || $timeFormat == 't' || empty($timeFormat))
+	    		{
+	    			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
+	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+
+	    			if ($value['matureDate'] >= 366)
 	    			{
-	    				$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
-	    			}
-	    			else
-	    			{
+	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+	    				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
+	    				$comment["matureDate"] = time();
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
-	    			
-	    			//Convert the createtimeformat into timestamp
-	    			$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
-	    			
-	    			if (isset($value['timeFormat']))$timeFormat = strtolower($value['timeFormat']);
-	    			
-	    			//If the sytax say stop or ... GitReminder will assign in this moment.
-	    			if ($value['matureDate'] == 'stop' ||$value['matureDate'] == 'ignore' ||$value['matureDate'] == 'end' || $value['matureDate'] == 'now')
+	    		}
+	    		elseif ($timeFormat == 'h' || $timeFormat == 's')
+	    		{
+	    			$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
+	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    			if ($value['matureDate'] >= 8761)
 	    			{
-	    				$value['matureDate'] = 0;
-	    				$timeFormat = 'm';
+	    				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
+	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+	    				$comment["matureDate"] = time();
+	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
-	    			
-	    			
-	    			
-	    			//Check the timeformat and create the maturedate.
-	    			if ($timeFormat == 'd' || $timeFormat == 't' || empty($timeFormat))
+	    		}
+	    		elseif ($timeFormat == 'm')
+	    		{
+	    			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
+	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    			if ($value['matureDate'] >= 525600)
 	    			{
-	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
-	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    				
-	    				if ($value['matureDate'] >= 366)
-	    				{
-	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
-	    					$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
-	    					$comment["matureDate"] = time();
-	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
-	    				}
+	    				$this->log->warning(CONNECTION_FAILED_DATABASE,$comment['ghIssueId'].$comment['ghRepo']);
+	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+	    				$comment["matureDate"] = time();
+	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
-	    			elseif ($timeFormat == 'h' || $timeFormat == 's')
-	    			{
-	    				$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
-	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    				if ($value['matureDate'] >= 8761)
-	    				{
-	    					$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
-	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
-	    					$comment["matureDate"] = time();
-	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
-	    				}
-	    			}
-	    			elseif ($timeFormat == 'm')
-	    			{
-	    				$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
-	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    				if ($value['matureDate'] >= 525600)
-	    				{
-	    					$this->log->warning(CONNECTION_FAILED_DATABASE,$comment['ghIssueId'].$comment['ghRepo']);
-	    					$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
-	    					$comment["matureDate"] = time();
-	    					$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
-	    				}
-	    			}
-	    			elseif ($timeFormat == ' ')
-	    			{
-	    				$comment['matureDate'] = strtotime($value['matureDate']);
-	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    			}
-	    			else 
-	    			{
-	    				$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
-	    				$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    			}
-	    			
-	    			
-	    			if (isset($value['sendmail']) && $value['sendmail'] != '' && $value['sendmailto'] != '')
-	    			{
-	    				$comment['sendMailNotificationTo'] = $value['sendmailto'];
-	    				$comment['commentMessage'] = '0';
-	    				$comment['sendSms'] = '0';
-	    			}
-	    			elseif (isset($value['writeComment']) && $value['writeComment'] != '')
-	    			{
-	    				$comment['commentMessage'] = $value['commentm'];
-	    				$comment['sendMailNotificationTo'] = '0';
-	    				$comment['sendSms'] = '0';
-	    			}
-	    			elseif (isset($value['sms']) && $value['sms'] != '' && $value['number'] != '')
-	    			{
-	    				$comment['sendSms'] = $value['number'];
-	    				$comment['sendMailNotificationTo'] = '0';
-	    				$comment['commentMessage'] = '0';
-	    			}
-	    	}
-    	}
+	    		}
+	    		elseif ($timeFormat == ' ')
+	    		{
+	    			$comment['matureDate'] = strtotime($value['matureDate']);
+	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    		}
+	    		else
+	    		{
+	    			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
+	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
+	    		}
+
+
+	    		if (isset($value['sendmail']) && $value['sendmail'] != '' && $value['sendmailto'] != '')
+	    		{
+	    			$comment['sendMailNotificationTo'] = $value['sendmailto'];
+	    			$comment['commentMessage'] = '0';
+	    			$comment['sendSms'] = '0';
+	    		}
+	    		elseif (isset($value['writeComment']) && $value['writeComment'] != '')
+	    		{
+	    			$comment['commentMessage'] = $value['commentm'];
+	    			$comment['sendMailNotificationTo'] = '0';
+	    			$comment['sendSms'] = '0';
+	    		}
+	    		elseif (isset($value['sms']) && $value['sms'] != '' && $value['number'] != '')
+	    		{
+	    			$comment['sendSms'] = $value['number'];
+	    			$comment['sendMailNotificationTo'] = '0';
+	    			$comment['commentMessage'] = '0';
+	    		}
+	    	}    	}
     	return $this;
     }
 
-    
-    
-    
     
     
     /**
@@ -505,19 +499,18 @@ class gitReminder
      * @return $this
      */
     public function process($link = 'ALL')
-    {
+	{
         $i = 0;
     	foreach ($this->tasks as $taskLink => &$task)
-    	{
-     		
+		{
     		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
      		{
      		    $i++;
      			try
      			{
-     				if (array_search($task['commentAId'], $this->oldTasks))
+     				if (array_key_exists($task['commentAId'], $this->oldTasks))
      				{
-     					echo USED_BEFORE;
+     					echo USED_BEFORE ." ".$taskLink;
      					$this->log->notice(USED_BEFORE,$task);
      				}
      				else
@@ -526,7 +519,9 @@ class gitReminder
 
 	     				if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0')
 	     				{
-	     					$this->sendMailNotification($task['sendMailNotificationTo'],"newissue");
+							$link = str_replace("/repos","",$task['issueLink']);
+							$link = "https://github.com".$link;
+	     					$this->sendMailNotification($task['sendMailNotificationTo'],"newissue",$link);
 	     				}
 	     				elseif (isset($task['commentMessage']) && $task['commentMessage'] != '0')
 	     				{
@@ -537,7 +532,14 @@ class gitReminder
 	     					//@todo implement
 	     					//if (!isset($task["matureDate"])) $task["matureDate"] = time();
 	     				}
-	     				array_push($this->oldTasks, $task['commentAId']);
+	     				$this->oldTasks[$task['commentAId']] = time();
+						foreach($this->oldTasks as $key => $value)
+						{
+							if ($value <= time() - 60*60*24*150) {
+								echo "Comment ID: " . $key . " ist geloescht!<br>";
+								unset($this->oldTasks[$key]);
+							}
+						}
      				}
      			}
      			catch (Exception $e)
@@ -596,6 +598,10 @@ class gitReminder
 		return $this;
 	}
 
+
+
+
+
 	/**
 	 * Load an Issue with all important informations.
 	 * @param $repoOwner
@@ -619,6 +625,8 @@ class gitReminder
 		
 		return $issue;
 	}
+
+
 
 
 	/**
@@ -673,7 +681,8 @@ class gitReminder
     		{
     			$commentMessage = $task['commentMessage'];
     		}else $commentMessage = 0;
-    		if (isset($task['sms']))
+
+			if (isset($task['sms']))
     		{
     			$sms = $task['sms'];
     		}else $sms = 0;
@@ -736,17 +745,19 @@ class gitReminder
     	$delete = "DELETE FROM old_tasks";
     	mysqli_query($dbLink, $delete);
     	
-    	foreach ($this->oldTasks as $oldTask)
+    	foreach ($this->oldTasks as $oldTask => $time)
     	{
 	    	$insertTwo = "INSERT INTO old_tasks (
-	    	commentAId
+	    	commentAId,
+	    	timeId
 	    	) VALUES (
-	    	'$oldTask'
+	    	'$oldTask',
+	    	'$time'
 	    	)";
 	    	mysqli_query($dbLink,$insertTwo);
     	}
     	mysqli_close($dbLink);
-    	$oldTasks = array();
+		unset($this->oldTasks);
     	return $this;
     }
 
@@ -758,7 +769,7 @@ class gitReminder
 	 * @param string $error
 	 * @return $this
 	 */
-    public function sendMailNotification($mailadress,$text,$error = MAIL_NO_ERROR_SEND)
+    public function sendMailNotification($mailadress,$text,$link = NULL,$error = MAIL_NO_ERROR_SEND)
     {    	
     	$header = MAIL_HEADER;
     	$header .= 'To: <'.$mailadress.'>' . "\r\n";
@@ -771,6 +782,8 @@ class gitReminder
     	{
     		$subject = 	MAIL_ISSUE_SUBJECT;
     		$message .= MAIL_ISSUE_TEXT;
+			$message .= " ".$link." ";
+			$message .= MAIL_ISSUE_TEXT_END;
     	}
     	elseif ($text == "error")
     	{
@@ -786,12 +799,18 @@ class gitReminder
     	return $this;
     }
 
-	
+
+	/**
+	 * Safe all Tasks
+	 */
     public function __destruct()
     {
-    	echo "<pre>";
-    	print_r($this->tasks);
-    	echo "</pre>";  	
+    	echo "<pre><h2>Tasks to do</h2>";
+		print_r($this->tasks);
+    	echo "</pre><br><br>";
+		echo "<pre><h2>Old Tasks</h2>";
+		print_r($this->oldTasks);
+		echo "</pre>";
     	$this->log->notice(NOTICE_END);
     	$this->storeTasksInDatabase(DB_HOST, DB_USER, DB_NAME, DB_PASS);
     	$this->storeOldGitReminderNotification(DB_HOST, DB_USER, DB_NAME, DB_PASS);
