@@ -42,7 +42,7 @@ class log
 		$text = "";
 		foreach ($this->entrys as &$row)
 		{
-			$text .= $row["date"]."||".$row["level"]."||".$row["desc"]."||".print_r($row["array"],1)."\n";
+			$text .= $row["date"]."|| ".$row["level"]."|| ".$row["desc"]."|| ".print_r($row["array"],1)."\n";
 		}
 						
 		$timestamp = time();
@@ -56,6 +56,4 @@ class log
 		fwrite($fp, $text);
 		fclose($fp);		
 	}
-	
-	
 }

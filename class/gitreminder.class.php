@@ -131,7 +131,6 @@ class gitReminder
 				mkdir($logFileData,0777);
 			}
 		}
-		
 	}
 
 	/**
@@ -168,7 +167,7 @@ class gitReminder
     			)
     		ENGINE = MYISAM ;";
 		 
-		$erg = mysqli_query($dbLink, $sql);
+		mysqli_query($dbLink, $sql);
 		 
 		$sql = "
     		CREATE TABLE old_tasks(
@@ -234,7 +233,7 @@ class gitReminder
   
     
     /**
-     * 
+     * Load old GitRemindertasks to
      */
     private function loadOldGitReminderNotification($dbHost, $dbUser, $dbName, $dbPwd)
     {
@@ -810,7 +809,8 @@ class gitReminder
 		print_r($this->tasks);
     	echo "</pre><br><br>";
 		echo "<pre><h2>Old Tasks</h2>";
-		print_r($this->oldTasks);
+		//print_r($this->oldTasks);
+		echo "<p>Es sind " . count($this->oldTasks) . " Elemente im Array</p>";
 		echo "</pre>";
     	$this->log->notice(NOTICE_END);
     	$this->storeTasksInDatabase(DB_HOST, DB_USER, DB_NAME, DB_PASS);
