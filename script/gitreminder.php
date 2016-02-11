@@ -7,4 +7,3 @@ require_once '../config/config.php';
         ->loadGhNotifications(GITREMINDER_NAME)
         ->parseSourceText(GITREMINDER_NAME)
         ->process();
-

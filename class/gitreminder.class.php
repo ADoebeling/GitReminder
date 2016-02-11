@@ -19,7 +19,7 @@ require_once '../config/config.php';
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
  * @link        http://www.1601.com
- * @version     0.1.151103_1lb
+ * @version     0.1.160211_1lb
  */
 class gitReminder
 {
@@ -103,7 +103,6 @@ class gitReminder
 	 */
     public function setGithubAccount ($ghUser, $ghPassOrToken)
     {
-    	
     	$this->githubRepo = new GitHubClient(); 
         $this->githubRepo->setCredentials($ghUser, $ghPassOrToken);
         return $this;
@@ -177,11 +176,10 @@ class gitReminder
     			`commentAId` VARCHAR( 150 ) NOT NULL,
     			`timeId` VARCHAR( 150 ) NOT NULL
     			)
-    		ENGINE = MYISAM ;";
+    		ENGINE = MYISAM;";
 		 
-		$erg = mysqli_query($dbLink, $sql);
-		
-		
+		mysqli_query($dbLink, $sql);
+
 		mysqli_close($dbLink);
 	}
 
@@ -427,7 +425,7 @@ class gitReminder
 
 	    			if ($value['matureDate'] >= 366)
 	    			{
-	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+						$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 	    				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
 	    				$comment["matureDate"] = time();
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
@@ -440,7 +438,7 @@ class gitReminder
 	    			if ($value['matureDate'] >= 8761)
 	    			{
 	    				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
-	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+	    				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 	    				$comment["matureDate"] = time();
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
@@ -449,10 +447,11 @@ class gitReminder
 	    		{
 	    			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
 	    			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
-	    			if ($value['matureDate'] >= 525600)
+
+					if ($value['matureDate'] >= 525600)
 	    			{
 	    				$this->log->warning(CONNECTION_FAILED_DATABASE,$comment['ghIssueId'].$comment['ghRepo']);
-	    				$this->createComment($comment['ghRepoUser'], $comment['ghRepo'], $comment['ghIssueId'], COMMENT_NOT_ASSIGN_365);
+						$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 	    				$comment["matureDate"] = time();
 	    				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
 	    			}
@@ -487,7 +486,8 @@ class gitReminder
 	    			$comment['sendMailNotificationTo'] = '0';
 	    			$comment['commentMessage'] = '0';
 	    		}
-	    	}    	}
+	    	}
+		}
     	return $this;
     }
 
@@ -510,7 +510,7 @@ class gitReminder
      			{
      				if (array_key_exists($task['commentAId'], $this->oldTasks))
      				{
-     					echo USED_BEFORE ." ".$taskLink;
+     					echo USED_BEFORE." ".$taskLink;
      					$this->log->notice(USED_BEFORE,$task);
      				}
      				else
@@ -532,7 +532,9 @@ class gitReminder
 	     					//@todo implement
 	     					//if (!isset($task["matureDate"])) $task["matureDate"] = time();
 	     				}
-	     				$this->oldTasks[$task['commentAId']] = time();
+
+						$this->oldTasks[$task['commentAId']] = time();
+
 						foreach($this->oldTasks as $key => $value)
 						{
 							if ($value <= time() - 60*60*24*150) {
@@ -586,7 +588,8 @@ class gitReminder
 				case 'loggasch':
 					$body = COMMENT_BY_LOGGASCH;
 					break;
-			}			
+			}
+
 			$data = array();
 			$data['body'] = $body;
 			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
@@ -646,16 +649,13 @@ class gitReminder
     		die(CONNECTION_FAILED_DATABASE);
     	}
     	
-    	
     	mysqli_set_charset($dbLink, 'utf8');
     	
     	$delete = "DELETE FROM tasks";
     	
-    	$erg = mysqli_query($dbLink, $delete);
+    	mysqli_query($dbLink, $delete);
     	
-    	
-    	
-    			
+
     	foreach ($this->tasks as $taskName=>$task)
     	{
     		$ghRepoUser = $task['ghRepoUser'];
@@ -675,17 +675,20 @@ class gitReminder
     		if (isset($task['sendMailNotificationTo']))
     		{
     			$sendMailNotificationTo = $task['sendMailNotificationTo'];
-    		}else $sendMailNotificationTo = 0;
+    		}
+			else $sendMailNotificationTo = 0;
     		
     		if (isset($task['commentMessage']))
     		{
     			$commentMessage = $task['commentMessage'];
-    		}else $commentMessage = 0;
+    		}
+			else $commentMessage = 0;
 
 			if (isset($task['sms']))
     		{
     			$sms = $task['sms'];
-    		}else $sms = 0;
+    		}
+			else $sms = 0;
     		
     		
     		// mysql_query("Insert into 'tasks' set name='$name', wert='$wert', letzterwert=22")
@@ -729,9 +732,7 @@ class gitReminder
 				'$matureDate',
 				'$commentAId'
 			)";
-    		
     		mysqli_query($dbLink,$insert);
-    		
     	}
     	mysqli_close($dbLink);
     	return $this;
@@ -747,14 +748,16 @@ class gitReminder
     	
     	foreach ($this->oldTasks as $oldTask => $time)
     	{
-	    	$insertTwo = "INSERT INTO old_tasks (
+	    	$insertTwo = "
+			INSERT INTO old_tasks (
 	    	commentAId,
 	    	timeId
 	    	) VALUES (
 	    	'$oldTask',
 	    	'$time'
 	    	)";
-	    	mysqli_query($dbLink,$insertTwo);
+
+			mysqli_query($dbLink,$insertTwo);
     	}
     	mysqli_close($dbLink);
 		unset($this->oldTasks);
@@ -774,9 +777,7 @@ class gitReminder
     	$header = MAIL_HEADER;
     	$header .= 'To: <'.$mailadress.'>' . "\r\n";
     	
-    	
     	$message = MAIL_MESSAGE_START;
-    	
     	
     	if ($text == "newissue")
     	{
