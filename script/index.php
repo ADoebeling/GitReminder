@@ -5,11 +5,11 @@ error_reporting(E_ALL);
 <!DOCTYPE HTML>
 <html>
 <head>
-	<meta http-equiv="refresh" content="4200000" />
 	<meta name="titel" title="GitReminder Do IT" />
 	<meta name="description" content="Free GitReminder for GitHub Pls. check GitHub.com an search GitReminder" />
 	<meta charset="ISO-8859-1" />
-	<meta http-equiv="refresh" content="10">
+	<meta http-equiv="refresh" content="10000">
+	<meta name="robots" content="noindex,nofollow">
 	<style>body,h2,html{font-family:sans-serif;}</style>
 </head>
 <body>

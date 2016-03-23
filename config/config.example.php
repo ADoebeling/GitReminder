@@ -5,22 +5,24 @@
 /*************************************/
 const PATH_TO_FILE = '../data/';
 
-//Where to safe tasks?
+//Where to safe tasks (Database)?
 const DB_HOST = ''; //Database Host
 const DB_USER = ''; //Database User
 const DB_NAME = ''; //Database Name
 const DB_PASS = ''; //Database Password
 
 
-//GitReminder:
+//GitReminder (GitHub-User):
 const GITREMINDER_NAME = ''; //GitReminder Username
 const GITREMINDER_PASSWD = ''; // GitReminder Userpassword or Token
 
 
+//How many issues can be edited
+const ACTION_LIMIT = 100;
+const ACTION_LIMIT_PER_RUN = 20;
+
 
 /**************** THE END **************/
-
-
 
 //Log Messages
 const NOTICE_START = 'Start';
@@ -28,7 +30,7 @@ const NOTICE_END = 'THE END';
 const FILE_NOT_FOUND = 'File not found! ';
 const CALLED_TOO_OFTEN = 'GitReminder has been called more than 30 times\n\n';
 const NEW_NOTIFICATION = 'New notification from user and repo: ';
-const ASSIGN_IN_TOO_MUCH_DAYS = 'The maturedate is in more tham 365 days.';
+const ASSIGN_IN_TOO_MUCH_DAYS = 'The matureDate is in more than 365 days.';
 const ASSIGN_ISSUE_TO_USER = 'Issue has Assign to a User:';
 const EDIT_MORE_THAN_20_ISSUES = 'More than 20 Issues has been edit!';
 const CANT_CREATE_COMMENT = 'GitReminder cant create a Comment for ';
@@ -50,6 +52,7 @@ const COMMENT_BY_ = 'Just do it, nothing is impossible :P';
 const COMMENT_BY_LATER = 'Pls. do it until 3 days.';
 const COMMENT_BY_LOGGASCH = 'MY CREATOR AND MASTER IS LOGGASCH';
 const COMMENT_TRY_IT_AGAIN = 'There was a mistake pls. try it again.';
+const NOT_THE_USER_IN_REPO = 'Can\'t assing this user, cause it\'s not in this repo... sorry :(';
 
 
 //Mailadress

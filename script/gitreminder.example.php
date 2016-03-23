@@ -5,4 +5,4 @@ $gitReminder = new gitReminder();
 $gitReminder -> setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
              -> loadGhNotifications(GITREMINDER_NAME)
              -> parseSourceText(GITREMINDER_NAME)
-             -> process();
+             -> checkUserAndProcess();
