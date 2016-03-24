@@ -72,7 +72,7 @@ class gitReminder
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
     	$this->connectDb();
-		$this->createTable();
+		$this->createTableinDb();
 		$this->loadStoredTasksFromDb();
 		$this->loadSettingsFromDB();
     	return $this;
@@ -134,14 +134,12 @@ class gitReminder
 	}
 
 
-
-
 	/**
 	 * Create a Database
 	 * need $this->mySqlI
 	 * @return bool
 	 */
-	private function createTable()
+	private function createTableinDb()
 	{
 		$sql = "SHOW TABLES IN `tasks`";
 		$result = $this->mySqlI->query($sql);
@@ -260,7 +258,7 @@ class gitReminder
 	 * @param $actionLimit
 	 * @return bool
 	 */
-	private function checkCountigSettigs($actionLimit = ACTION_LIMIT)
+	private function checkActionLimit($actionLimit = ACTION_LIMIT)
 	{
 		$count = &$this->settings['actionLimit']['value'];
 		$lastUpdate = &$this->settings['actionLimit']['lastUpdate'];
@@ -288,7 +286,7 @@ class gitReminder
 	 * @param $actionLimitPerRun
 	 * @return bool || int
 	 */
-	private function checkLimitPerRun($actionLimitPerRun = ACTION_LIMIT_PER_RUN)
+	private function checkActionLimitPerRun($actionLimitPerRun = ACTION_LIMIT_PER_RUN)
 	{
 		if($this->runLimitInt >= $actionLimitPerRun)
 		{
@@ -700,11 +698,14 @@ class gitReminder
 	 * Process if an error is in the task
 	 * work with checkUserAndProcess()
 	 * @param $task
+	 * @param $text
+	 * @return true;
 	 */
-	private function processErrorTask($task)
+	private function processErrorTask($task,$text)
 	{
 		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitle"], $task["ghIssueId"], null, $task["author"]);
-		$this->createComment($task['issueLink'],NOT_THE_USER_IN_REPO);
+		$this->createComment($task['issueLink'],$text);
+		return true;
 	}
 
 	/**
@@ -714,18 +715,17 @@ class gitReminder
 	 * @param $user
 	 * @return bool
 	 */
-	private function checkContributorsForUserName($repoUser,$repo,$user)
+	private function checkContributorsInIssue($repoUser,$repo,$user)
 	{
-		$bool = false;
 		$contributors = $this->githubRepo->request("/repos/".$repoUser."/".$repo."/collaborators", 'GET', array(), 200, 'GitHubUser', true);
 
-		foreach($contributors as $contrie){
-			$contributorUser = $contrie->getLogin();
-			if($contributorUser == $user){
-				$bool = true;
-			}
+		foreach($contributors as $contributor){
+			$contributorUser = $contributor->getLogin();
+
+			if($contributorUser == $user)
+				return true;
 		}
-		return $bool;
+		return false;
 	}
 
 
@@ -900,17 +900,17 @@ class gitReminder
 	{
     	foreach ($this->tasks as $taskLink => &$task)
 		{
-    		if((!$this->checkLimitPerRun() || !$this->checkCountigSettigs()) && DELETE_FILE_FOR_SAFE == true){
+    		if((!$this->checkActionLimitPerRun() || !$this->checkActionLimit()) && DELETE_FILE_FOR_SAFE == true){
 				$this->deleteFile('../htdocs/index_2.php');
 				die(EDIT_MORE_THAN_05_ISSUES.ACTION_LIMIT_OVER);
 			}
 
-			if($this->checkContributorsForUserName($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser'])){
+			if($this->checkContributorsInIssue($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser'])){
 				$this->processTask($task);
 				$task['doneDay'] = time();
 			}
 			else{
-				$this->processErrorTask($task);
+				$this->processErrorTask($task,NOT_THE_USER_IN_REPO);
 				$task['doneDay'] = time();
 			}
         }
