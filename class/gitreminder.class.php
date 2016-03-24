@@ -442,8 +442,10 @@ class gitReminder
 			//Load all commits in the Array $comments[] from issue
 			$comments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
 
-			if($this->lookForGrInComments(array_reverse($comments),$nameGitReminder,$taskIndex)){
-				return true;
+			foreach (array_reverse($comments) as $commentObject) {
+				if ($this->lookForGrInComments($commentObject,$nameGitReminder, $taskIndex)) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -452,26 +454,25 @@ class gitReminder
 	/**
 	 * look for GitReminderName in comment-body
 	 * work with: loadAllComments($repoOwner,$repo,$issueId,$loop,$nameGitReminder,$taskIndex)
-	 * @param $comments
+	 * @param $commentObject
 	 * @param $nameGitReminder
 	 * @param $taskIndex
 	 * @return bool
 	 */
-	private function lookForGrInComments($comments,$nameGitReminder,$taskIndex)
+	private function lookForGrInComments($commentObject,$nameGitReminder,$taskIndex)
 	{
 		//Here we are looking for the $nameGitReminder (name of bot) in the other "body"strings
-		foreach ($comments as $commentObject){
-			$nextComments = $commentObject->getBody();
+		$nextComments = $commentObject->getBody();
 
 			//If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
-			if (strpos($nextComments, $nameGitReminder) !== false){
-				$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
-				$this->tasks[$taskIndex]['author'] = $commentObject->getuser()->getlogin();
-				$this->tasks[$taskIndex]['commentCreateDate'] = $commentObject->getCreatedAt();
-				$this->tasks[$taskIndex]['commentAId'] =  $commentObject->getId();
-				return true;
-			}
+		if (strpos($nextComments, $nameGitReminder) !== false){
+			$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
+			$this->tasks[$taskIndex]['author'] = $commentObject->getuser()->getlogin();
+			$this->tasks[$taskIndex]['commentCreateDate'] = $commentObject->getCreatedAt();
+			$this->tasks[$taskIndex]['commentAId'] =  $commentObject->getId();
+			return true;
 		}
+
 		return false;
 	}
 
