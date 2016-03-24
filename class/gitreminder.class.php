@@ -53,7 +53,7 @@ class gitReminder
 	/**
 	 * The mySql-Object
 	 */
-	private $mySqlLink;
+	private $mySqlI;
 
 
     /**
@@ -89,13 +89,13 @@ class gitReminder
 	 */
     private function connectDb($dbHost = DB_HOST,$dbUser = DB_USER, $dbPass = DB_PASS, $dbName = DB_NAME)
     {
-		$this->mySqlLink = mysqli_connect($dbHost,$dbUser,$dbPass,$dbName);
-		mysqli_set_charset($this->mySqlLink, 'utf8');
+		$this->mySqlI = new mysqli($dbHost,$dbUser,$dbPass,$dbName);
 
-    	if(!empty(mysqli_error ($this->mySqlLink))){
+    	if($this->mySqlI->connect_error){
 			$this->log->error(CONNECTION_FAILED_DATABASE);
 			die(USE_DATABASE);
 		}
+		$this->mySqlI->set_charset('utf8');
 
     	return $this;
     }
@@ -103,12 +103,12 @@ class gitReminder
 	/**
 	 * Close the DB-Connection
 	 * the call is in __destruct()
-	 * need $this->mySqlLink
+	 * need $this->mySqlI
 	 * @return bool;
 	 */
 	private function closeDb()
 	{
-		 return mysqli_close($this->mySqlLink);
+		 return $this->mySqlI->close();
 	}
 
 
@@ -138,19 +138,15 @@ class gitReminder
 
 	/**
 	 * Create a Database
-	 * need $this->mySqlLink
+	 * need $this->mySqlI
 	 * @return bool
 	 */
 	private function createTable()
 	{
 		$sql = "SHOW TABLES IN `tasks`";
-		$result = mysqli_query($this->mySqlLink,$sql);
+		$result = $this->mySqlI->query($sql);
 
-		var_dump($result);
-
-		echo mysqli_num_rows($result);
-
-		if(1 == 1){
+		if(1 == 9){
 			$sql = "
     		CREATE TABLE tasks(
     			`taskName` VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -173,12 +169,12 @@ class gitReminder
     			)
     		ENGINE = MYISAM ;";
 
-			if(!mysqli_query($this->mySqlLink, $sql))
+			if(!mysqli_query($this->mySqlI, $sql))
 				echo CANT_CREATE_TABLE." 'tasks'";
 		}
 
 
-		$sql = mysqli_query($this->mySqlLink,'select 1 from `settings` LIMIT 1');
+		$sql = $this->mySqlI->query('select 1 from `settings` LIMIT 1');
 		if($sql === FALSE){
 			$sql = "
 				CREATE TABLE settings(
@@ -188,16 +184,15 @@ class gitReminder
 					)
 				ENGINE = MYISAM ;";
 
-			if (!mysqli_query($this->mySqlLink, $sql))
+			if (!$this->mySqlI->query($sql))
 				echo CANT_CREATE_TABLE." 'setting'";
 		}
-
 		return true;
 	}
 
 	/**
 	 * Load stored task from Database
-	 * need $this->mySqlLink
+	 * need $this->mySqlI
 	 * @return $this
 	 */
     private function loadStoredTasksFromDb()
@@ -205,7 +200,7 @@ class gitReminder
 		$timeStamp = time();
     	$sql = "SELECT * FROM tasks WHERE `matureDate` < $timeStamp && doneDay = 0";
     	
-    	$dbAnswer = mysqli_query($this->mySqlLink, $sql);
+    	$dbAnswer = $this->mySqlI->query($sql);
 
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
@@ -223,12 +218,12 @@ class gitReminder
 
 	/**
 	 * Load the settings from database
-	 * need $this->mySqlLink
+	 * need $this->mySqlI
 	 */
 	private function loadSettingsFromDB()
 	{
 		$sql = "SELECT * FROM settings";
-		$dbAnswer = mysqli_query($this->mySqlLink, $sql);
+		$dbAnswer = $this->mySqlI->query($sql);
 
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
@@ -307,10 +302,6 @@ class gitReminder
 
 
 
-
-
-
-
 	/**
 	 * Stores the current $tasks-array in a database
 	 * @return $this
@@ -369,7 +360,7 @@ class gitReminder
 				;
 			";
 
-			if(!mysqli_query($this->mySqlLink,$sql))
+			if(!$this->mySqlI->query($sql))
 				echo CANT_INSERT_OR_UPDATE_DB;
 		}
 		return $this;
@@ -382,9 +373,6 @@ class gitReminder
 	 */
 	private function storeSettings()
 	{
-		$delete = "DELETE FROM settings";
-		mysqli_query($this->mySqlLink, $delete);
-
 		foreach ($this->settings as $name => $setting)
 		{
 			$sql = "
@@ -400,22 +388,11 @@ class gitReminder
 				;
 	    	";
 
-			if(!mysqli_query($this->mySqlLink,$sql))
+			if(!$this->mySqlI->query($sql))
 				echo CANT_INSERT_OR_UPDATE_DB;
 		}
 		return $this;
 	}
-
-
-
-
-
-
-
-
-
-
-
 
 
 
