@@ -68,7 +68,7 @@ class gitReminder
      */
     function __construct()
     {   
-    	$this->createDataStructure();
+    	$this->createFileStructure();
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
     	$this->connectDb();
@@ -115,7 +115,7 @@ class gitReminder
 	/**
 	 * Create folder and data structure
 	 */
-	private function createDataStructure()
+	private function createFileStructure()
 	{
 		foreach ($this->folderStructure as $folder){
 			if(!file_exists($folder)){
