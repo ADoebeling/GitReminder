@@ -2,3 +2,5 @@ tasks.phpserialize
 tasks.json
 logs/
 config.php
+/index.php
+/htdocs/index.php
