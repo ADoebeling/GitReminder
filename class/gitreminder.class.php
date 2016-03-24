@@ -30,15 +30,9 @@ class gitReminder
     
     /**
      * List of all found and pared tasks
-     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitel' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'commentAuthor' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
+     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitel' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
      */
     private $tasks = array();
-    
-    /**
-     * An Array to check if the same Task has been executed.
-     * @var array $oldTasks
-     */
-    private $oldTasks = array();
 
 
 	/**
@@ -83,10 +77,9 @@ class gitReminder
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
     	$this->connectDb();
-		$this->loadStoredTasksFromDb();
-		$this->loadOldTasksFromDb();
-		$this->loadSettingsFromDB();
 		$this->createDB();
+		$this->loadStoredTasksFromDb();
+		$this->loadSettingsFromDB();
     	return $this;
     }
 
@@ -101,14 +94,14 @@ class gitReminder
 	 */
     private function connectDb($dbHost = DB_HOST,$dbUser = DB_USER, $dbPass = DB_PASS, $dbName = DB_NAME)
     {
-    	if ($dbHost != '' && $dbUser != '' && $dbPass != '' && $dbName != ''){
-			$this->mySqlLink = mysqli_connect($dbHost,$dbUser,$dbPass,$dbName);
-			mysqli_set_charset($this->mySqlLink, 'utf8');
-    	}
-    	else{
-    		$this->log->error(CONNECTION_FAILED_DATABASE);
-    		die(USE_DATABASE);
-    	}
+		$this->mySqlLink = mysqli_connect($dbHost,$dbUser,$dbPass,$dbName);
+		mysqli_set_charset($this->mySqlLink, 'utf8');
+
+    	if(!empty(mysqli_error ($this->mySqlLink))){
+			$this->log->error(CONNECTION_FAILED_DATABASE);
+			die(USE_DATABASE);
+		}
+
     	return $this;
     }
 
@@ -144,53 +137,73 @@ class gitReminder
 		}
 	}
 
+
+
+
+
+
+
+
+
+
+
 	/**
 	 * Create a Database
 	 * need $this->mySqlLink
+	 * @return bool
 	 */
 	private function createDB()
 	{
-		$sql = "
-    	CREATE TABLE tasks(
-    			`id` INT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`taskName` VARCHAR( 150 ) NOT NULL ,
-    			`ghRepoUser` VARCHAR( 150 ) NOT NULL ,
-    			`ghRepo` VARCHAR( 150 ) NOT NULL ,
-    			`ghIssueId` VARCHAR( 150 ) NOT NULL ,
-    			`issueLink` VARCHAR( 150 ) NOT NULL ,
-    			`issueTitel` VARCHAR( 150 ) NOT NULL ,
-    			`assignIssueToUser` VARCHAR( 150 ) NOT NULL ,
-    			`sendMailNotificationTo` VARCHAR( 150 ) NOT NULL,
-    			`commentMessage` VARCHAR( 150 ) NOT NULL,
-    			`sendSms` VARCHAR( 150 ) NOT NULL,
-    			`sourceText` VARCHAR( 250 ) NOT NULL ,
-    			`commentAuthor` VARCHAR( 250 ) NOT NULL ,
-    			`commentCreateDate` VARCHAR( 250 ) NOT NULL ,
-    			`matureDateInDateform` VARCHAR( 250 ) NOT NULL ,
-    			`matureDate` INT(20) NOT NULL,
-    			`commentAId` INT(30) NOT NULL
+		$sql = "SHOW TABLES IN `tasks`";
+		$result = mysqli_query($this->mySqlLink,$sql);
+
+		var_dump($result);
+
+		echo mysqli_num_rows($result);
+
+		if(1 == 1){
+			$sql = "
+    		CREATE TABLE tasks(
+    			`taskName` VARCHAR(255) NOT NULL PRIMARY KEY,
+    			`ghRepoUser` VARCHAR(100) NOT NULL ,
+    			`ghRepo` VARCHAR(100) NOT NULL ,
+    			`ghIssueId` INT (20) NOT NULL ,
+    			`issueLink` VARCHAR(255) NOT NULL ,
+    			`issueTitel` VARCHAR(255) NOT NULL ,
+    			`assignIssueToUser` VARCHAR(100) NOT NULL ,
+    			`sendMailNotificationTo` VARCHAR(100) NOT NULL,
+    			`commentMessage` VARCHAR(150) NOT NULL,
+    			`sendSms` INT(50) NOT NULL,
+    			`sourceText` VARCHAR(500) NOT NULL ,
+    			`author` VARCHAR(100) NOT NULL ,
+    			`commentCreateDate` INT(12) NOT NULL ,
+    			`matureDateInDateform` VARCHAR(20) NOT NULL ,
+    			`matureDate` INT(12) NOT NULL,
+    			`commentAId` INT(20) NOT NULL,
+    			`doneDay` INT(12) NOT NULL
     			)
     		ENGINE = MYISAM ;";
-		mysqli_query($this->mySqlLink, $sql);
-		 
-		$sql = "
-    		CREATE TABLE old_tasks(
-    			`id` INT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`commentAId` INT(30) NOT NULL,
-    			`timeId` INT(20) NOT NULL
-    			)
-    		ENGINE = MYISAM;";
-		mysqli_query($this->mySqlLink, $sql);
 
-		$sql = "
-    		CREATE TABLE settings(
-    			`id` INT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-    			`name` VARCHAR( 250 ) NOT NULL,
-    			`value` VARCHAR( 250 ) NOT NULL,
-    			`lastUpdate` INT(20) NOT NULL
-    			)
-    		ENGINE = MYISAM;";
-		mysqli_query($this->mySqlLink, $sql);
+			if(!mysqli_query($this->mySqlLink, $sql))
+				echo CANT_CREATE_TABLE." 'tasks'";
+		}
+
+
+		$sql = mysqli_query($this->mySqlLink,'select 1 from `settings` LIMIT 1');
+		if($sql === FALSE){
+			$sql = "
+				CREATE TABLE settings(
+					`name` VARCHAR( 255 ) NOT NULL PRIMARY KEY,
+					`value` VARCHAR( 255 ) NOT NULL,
+					`lastUpdate` INT(12) NOT NULL
+					)
+				ENGINE = MYISAM ;";
+
+			if (!mysqli_query($this->mySqlLink, $sql))
+				echo CANT_CREATE_TABLE." 'setting'";
+		}
+
+		return true;
 	}
 
 	/**
@@ -200,32 +213,24 @@ class gitReminder
 	 */
     private function loadStoredTasksFromDb()
     {
-    	$sql = "SELECT * FROM tasks";
+		$timeStamp = time();
+    	$sql = "SELECT * FROM tasks WHERE `matureDate` < $timeStamp && doneDay = 0";
     	
     	$dbAnswer = mysqli_query($this->mySqlLink, $sql);
-    	
-    	while ($dbLine = mysqli_fetch_assoc($dbAnswer))
-    	{
-    		$this->tasks[$dbLine['taskName']] = $dbLine;
-    		$this->tasks[$dbLine['taskName']]['ghIssueId'] = intval($this->tasks[$dbLine['taskName']]['ghIssueId']);
-    	}
+
+		if($dbAnswer !== false) {
+			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
+				$this->tasks[$dbLine['taskName']] = $dbLine;
+				$this->tasks[$dbLine['taskName']]['ghIssueId'] = intval($this->tasks[$dbLine['taskName']]['ghIssueId']);
+			}
+		}
+		else{
+			echo "No tasks in DB";
+		}
+
 		return $this;
     }
 
-    /**
-     * Load old GitRemindertasks to array
-	 * need $this->mySqlLink
-     */
-    private function loadOldTasksFromDb()
-    {
-    	$sql = "SELECT * FROM old_tasks";
-    	$dbAnswer = mysqli_query($this->mySqlLink, $sql);
-    	while ($dbLine = mysqli_fetch_assoc($dbAnswer))
-    	{
-    		$this->oldTasks[$dbLine['commentAId']] = intval($dbLine['timeId']);
-    	}
-    	return $this;
-    }
 
 	/**
 	 * Load the settings from database
@@ -236,9 +241,13 @@ class gitReminder
 		$sql = "SELECT * FROM settings";
 		$dbAnswer = mysqli_query($this->mySqlLink, $sql);
 
-		while ($dbLine = mysqli_fetch_assoc($dbAnswer))
-		{
-			$this->settings[$dbLine['name']] = array('value' => $dbLine['value'], 'lastUpdate' => intval($dbLine['lastUpdate']));
+		if($dbAnswer !== false) {
+			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
+				$this->settings[$dbLine['name']] = array('value' => $dbLine['value'], 'lastUpdate' => intval($dbLine['lastUpdate']));
+			}
+		}
+		else{
+			echo "No settings in DB";
 		}
 
 		//Load fallback if entry "actionLimit" isn't in the array
@@ -247,6 +256,16 @@ class gitReminder
 			$this->settings['actionLimit'] = array('value' => 0, 'lastUpdate' => 0);
 		}
 	}
+
+
+
+
+
+
+
+
+
+
 
 	/**
 	 * @param $actionLimit
@@ -277,22 +296,26 @@ class gitReminder
 
 	/**
 	 * Check the Limit
-	 * @param $i
 	 * @param $actionLimitPerRun
 	 * @return bool || int
 	 */
-	private function checkLimitPerRun($i,$actionLimitPerRun = ACTION_LIMIT_PER_RUN)
+	private function checkLimitPerRun($actionLimitPerRun = ACTION_LIMIT_PER_RUN)
 	{
-		if($i >= $actionLimitPerRun)
+		if($this->runLimitInt >= $actionLimitPerRun)
 		{
 			$this->log->warning(EDIT_MORE_THAN_20_ISSUES,$this->tasks);
 			return false;
 		}
-		$i++;
-		$this->runLimitInt = $i;
+		$this->runLimitInt++;
 
 		return true;
 	}
+
+
+
+
+
+
 
 	/**
 	 * Stores the current $tasks-array in a database
@@ -300,85 +323,64 @@ class gitReminder
 	 */
 	private function storeTasksInDatabase()
 	{
-		$delete = "DELETE FROM tasks";
-
-		mysqli_query($this->mySqlLink, $delete);
-
-
 		foreach ($this->tasks as $taskName=>$task)
 		{
-			$ghRepoUser = $task['ghRepoUser'];
-			$ghRepo = $task['ghRepo'];
-			$ghIssueId = $task['ghIssueId'];
-			$assignIssueToUser = $task['assignIssueToUser'];
-			$ghIssueLink = $task['issueLink'];
-			$ghIssueTitel = $task['issueTitel'];
-			$sourceText = $task['sourceText'];
-			$matureDate = $task['matureDate'];
-			$commentAuthor = $task['commentAuthor'];
-			$commentCreateDate = $task['commentCreateDate'];
-			$matureDateInDateform = $task['matureDateInDateform'];
-			$commentAId = $task['commentAId'];
-
 			if (isset($task['sendMailNotificationTo']))$sendMailNotificationTo = $task['sendMailNotificationTo'];
-			else $sendMailNotificationTo = 0;
+				else $sendMailNotificationTo = 0;
 
 			if (isset($task['commentMessage']))$commentMessage = $task['commentMessage'];
-			else $commentMessage = 0;
+				else $commentMessage = 0;
 
 			if (isset($task['sms']))$sms = $task['sms'];
-			else $sms = 0;
+				else $sms = 0;
 
 			$sql = "
 			INSERT INTO tasks
 			SET
 				taskName = '$taskName',
-				ghRepoUser = '$ghRepoUser',
-				ghRepo = '$ghRepo',
-				ghIssueId = '$ghIssueId',
-				issueLink = '$ghIssueLink',
-				issueTitel = '$ghIssueTitel',
-				assignIssueToUser = '$assignIssueToUser',
-				sendMailNotificationTo = '$sendMailNotificationTo',
-				commentMessage = '$commentMessage',
-				sendSms = '$sms',
-				sourceText = '$sourceText',
-				commentAuthor = '$commentAuthor',
-				commentCreateDate = '$commentCreateDate',
-				matureDateInDateform = '$matureDateInDateform',
-				matureDate = '$matureDate',
-				commentAId = '$commentAId'
+				ghRepoUser = '".$task['ghRepoUser']."',
+				ghRepo = '".$task['ghRepo']."',
+				ghIssueId = '".$task['ghIssueId']."',
+				issueLink = '".$task['issueLink']."',
+				issueTitel = '".$task['issueTitel']."',
+				assignIssueToUser = '".$task['assignIssueToUser']."',
+				sendMailNotificationTo = '".$sendMailNotificationTo."',
+				commentMessage = '".$commentMessage."',
+				sendSms = '".$sms."',
+				sourceText = '".$task['sourceText']."',
+				author = '".$task['author']."',
+				commentCreateDate = '".$task['commentCreateDate']."',
+				matureDateInDateform = '".$task['matureDateInDateform']."',
+				matureDate = '".$task['matureDate']."',
+				commentAId = '".$task['commentAId']."',
+				doneDay = '".$task['doneDay']."'
+
+			ON DUPLICATE KEY UPDATE
+				ghRepoUser = '".$task['ghRepoUser']."',
+				ghRepo = '".$task['ghRepo']."',
+				ghIssueId = '".$task['ghIssueId']."',
+				issueLink = '".$task['issueLink']."',
+				issueTitel = '".$task['issueTitel']."',
+				assignIssueToUser = '".$task['assignIssueToUser']."',
+				sendMailNotificationTo = '".$sendMailNotificationTo."',
+				commentMessage = '".$commentMessage."',
+				sendSms = '".$sms."',
+				sourceText = '".$task['sourceText']."',
+				author = '".$task['author']."',
+				commentCreateDate = '".$task['commentCreateDate']."',
+				matureDateInDateform = '".$task['matureDateInDateform']."',
+				matureDate = '".$task['matureDate']."',
+				commentAId = '".$task['commentAId']."',
+				doneDay = '".$task['doneDay']."'
+				;
 			";
-			mysqli_query($this->mySqlLink,$sql);
+
+			if(!mysqli_query($this->mySqlLink,$sql))
+				echo CANT_INSERT_OR_UPDATE_DB;
 		}
 		return $this;
 	}
 
-	/**
-	 * Store the tasks-comment-ids who are done in db
-	 * @return $this
-	 */
-	private function storeOldGitReminderNotification()
-	{
-		$delete = "DELETE FROM old_tasks";
-		mysqli_query($this->mySqlLink, $delete);
-
-		foreach ($this->oldTasks as $oldTask => $time)
-		{
-			$insertTwo = "
-			INSERT INTO old_tasks (
-	    	commentAId,
-	    	timeId
-	    	) VALUES (
-	    	'$oldTask',
-	    	'$time'
-	    	)";
-
-			mysqli_query($this->mySqlLink,$insertTwo);
-		}
-		unset($this->oldTasks);
-		return $this;
-	}
 
 	/**
 	 * Store all settings in db
@@ -391,48 +393,65 @@ class gitReminder
 
 		foreach ($this->settings as $name => $setting)
 		{
-			$value = $setting['value'];
-			$lastUpdate = $setting['lastUpdate'];
-
 			$sql = "
-			INSERT INTO settings(
-	    	`name`,
-	    	`value`,
-	    	`lastUpdate`
-	    	) VALUES (
-	    	'$name',
-	    	'$value',
-	    	'$lastUpdate'
-	    	)";
+			INSERT INTO settings
+			SET
+	    	`name` = '$name',
+	    	`value` = '".$setting['value']."',
+	    	`lastUpdate` = '".$setting['lastUpdate']."'
 
-			mysqli_query($this->mySqlLink,$sql);
+	    	ON DUPLICATE KEY UPDATE
+				`value` = '".$setting['value']."',
+				`lastUpdate` = '".$setting['lastUpdate']."'
+				;
+	    	";
+
+			if(!mysqli_query($this->mySqlLink,$sql))
+				echo CANT_INSERT_OR_UPDATE_DB;
 		}
-		unset($this->settings);
 		return $this;
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 	/**
 	 * Load all comments from an Issue
+	 * work with: storeNotificationsInThisTasks()
 	 * @param $repoOwner
 	 * @param $repo
 	 * @param $issueId
 	 * @param $loop
+	 * @param $nameGitReminder
+	 * @param $taskIndex
 	 * @return array
 	 */
-	private function loadAllComments($repoOwner,$repo,$issueId,$loop)
+	private function loadAllComments($repoOwner,$repo,$issueId,$loop,$nameGitReminder,$taskIndex)
 	{
-		$comments = array();
-
-		for ($i=1;$i<=$loop;$i++){
+		for ($i=$loop;$i>=1;$i--){
 			//Load all commits in the Array $comments[] from issue
-			$newComments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
-			$comments += $newComments;
+			$comments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
+
+			if($this->lookForGrInComments(array_reverse($comments),$nameGitReminder,$taskIndex)){
+				return true;
+			}
 		}
-		return krsort($comments);
+		return false;
 	}
 
 	/**
 	 * look for GitReminderName in comment-body
+	 * work with: loadAllComments($repoOwner,$repo,$issueId,$loop,$nameGitReminder,$taskIndex)
 	 * @param $comments
 	 * @param $nameGitReminder
 	 * @param $taskIndex
@@ -447,7 +466,7 @@ class gitReminder
 			//If name was founded and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
 			if (strpos($nextComments, $nameGitReminder) !== false){
 				$this->tasks[$taskIndex]['sourceText'] = trim($nextComments);
-				$this->tasks[$taskIndex]['commentAuthor'] = $commentObject->getuser()->getlogin();
+				$this->tasks[$taskIndex]['author'] = $commentObject->getuser()->getlogin();
 				$this->tasks[$taskIndex]['commentCreateDate'] = $commentObject->getCreatedAt();
 				$this->tasks[$taskIndex]['commentAId'] =  $commentObject->getId();
 				return true;
@@ -457,29 +476,54 @@ class gitReminder
 	}
 
 	/**
-	 * Look for GitReminderName in the issue-body
-	 * @param $nameGitReminder
-	 * @param $taskIndex
+	 * Load all comments from an Issue
+	 * work with: storeNotificationsInThisTasks()
 	 * @param $repoOwner
 	 * @param $repo
 	 * @param $issueId
+	 * @return bool
 	 */
-	private function lookForGrInIssue($nameGitReminder,$taskIndex,$repoOwner,$repo,$issueId)
+	private function loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder, $taskIndex)
 	{
 		$issue = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId, 'GET', array(), 200, 'GitHubPullComment', true);
 
+		if($this->lookForGrInIssue($issue,$nameGitReminder,$taskIndex))
+			return true;
+
+		return false;
+	}
+
+	/**
+	 * Look for GitReminderName in the issue-body
+	 * work with: storeNotificationsInThisTasks()
+	 * @param $issue
+	 * @param $nameGitReminder
+	 * @param $taskIndex
+	 * @return bool
+	 */
+	private function lookForGrInIssue($issue,$nameGitReminder,$taskIndex)
+	{
+		//Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment
 		//Here we will get the body (the message) from the issue
 		$issueBody = $issue->getBody();
 
-		//Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment
 		//If name was found and the ['sourceText'] and is not the "body"string, we write the whole "body"string in our global Array->(tasks). The ['sourceText'] before will be overwritten
 		if (strpos($issueBody, $nameGitReminder) !== false){
 			$this->tasks[$taskIndex]['sourceText'] = trim($issueBody);
-			$this->tasks[$taskIndex]['commentAuthor'] = $issue->getuser()->getlogin();
+			$this->tasks[$taskIndex]['author'] = $issue->getuser()->getlogin();
 			$this->tasks[$taskIndex]['commentCreateDate'] = $issue->getCreatedAt();
 			$this->tasks[$taskIndex]['commentAId'] =  $issue->getId();
+			return true;
 		}
+		return false;
 	}
+
+
+
+
+
+
+
 
 	/**
 	 * Store all Notifications-Info-Comments into $this->tasks[] where comment body is with "GitReminder-Name"
@@ -497,10 +541,8 @@ class gitReminder
 
 			//Check how many comments the Issue have.
 			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
-			$intComments = $issueObj->getComments();
-
 			//Calc the loop depending on comments
-			$loop = intval($intComments / 30)+1;
+			$pages = intval($issueObj->getComments() / 30)+1;
 
 			//Write new Notification into the logfile
 			$this->log->info(NEW_NOTIFICATION,$repo.$issueTitel);
@@ -515,17 +557,28 @@ class gitReminder
 				'issueLink'  => $issuePath,
 				'issueTitel' => $issueTitel,
 				'ghIssueId'	 => $issueId,
+				'doneDay' => 0,
 			);
 
-			$comments = $this->loadAllComments($repoOwner,$repo,$issueId,$loop);
-
-
-			// Looking for task in issue-body instead of issue-comment
-			if (!$this->lookForGrInComments($comments,$nameGitReminder,$taskIndex)) {
-				$this->lookForGrInIssue($nameGitReminder, $taskIndex, $repoOwner, $repo, $issueId);
+			// Load all comments an look
+			// for task in issue-body instead of issue-comment
+			if ($this->loadAllComments($repoOwner,$repo,$issueId,$pages,$nameGitReminder,$taskIndex)) {
+				// Load the issue-bodys
+				$issue = $this->loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex);
+				//Check, if the GitReminder-Name is in the issue-body...
 			}
 		}
 	}
+
+
+
+
+
+
+
+
+
+
 
 	/**
 	 * Create the matureDate and need:
@@ -551,7 +604,7 @@ class gitReminder
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
 				$comment["matureDate"] = time();
-				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
 		}
 		elseif ($timeFormat == 'h' || $timeFormat == 's'){
@@ -561,7 +614,7 @@ class gitReminder
 				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$comment["matureDate"] = time();
-				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
 		}
 		elseif ($timeFormat == 'm'){
@@ -572,7 +625,7 @@ class gitReminder
 				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$comment["matureDate"] = time();
-				$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
 		}
 		elseif ($timeFormat == ' '){
@@ -608,8 +661,15 @@ class gitReminder
 	}
 
 
+
+
+
+
+
+
 	/**
 	 * Create task with the array-data-strings in value
+	 * work with: parseSourceText()
 	 * @param array $value
 	 * @param array $comment
 	 * @return array $comment
@@ -620,7 +680,7 @@ class gitReminder
 		if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
 			$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
 		else
-			$comment["assignIssueToUser"] = str_replace("@","",$comment['commentAuthor']);
+			$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 
 		//Convert the createtimeformat into timestamp
 		$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
@@ -639,10 +699,11 @@ class gitReminder
 
 	/**
 	 * Process the task and feature. For example write mail etc.
-	 * @param $taskLink
+	 * work with checkUserAndProcess()
 	 * @param $task
+	 * @return bool
 	 */
-	private function processTask($taskLink,$task)
+	private function processTask($task)
 	{
 		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"], null, $task["assignIssueToUser"]);
 
@@ -656,29 +717,22 @@ class gitReminder
 		}
 		elseif (isset($task['sendSms']) && $task['sendSms'] != '0'){
 			//@todo implement
-			//if (!isset($task["matureDate"])) $task["matureDate"] = time();
 		}
-		$this->oldTasks[$task['commentAId']] = time();
-		foreach ($this->oldTasks as $key => $value){
-			if($value <= time() - 60 * 60 * 24 * 150){
-				echo "Comment ID: " . $key . " ist geloescht!<br>";
-				unset($this->oldTasks[$key]);
-			}
-		}
+
 		$this->log->info(ASSIGN_ISSUE_TO_USER,$task['ghIssueId'].$task['issueTitel'].$task['assignIssueToUser']);
-		unset($this->tasks[$taskLink]);
+
+		return true;
 	}
 
 	/**
 	 * Process if an error is in the task
-	 * @param $taskLink
+	 * work with checkUserAndProcess()
 	 * @param $task
 	 */
-	private function processErrorTask($taskLink,$task)
+	private function processErrorTask($task)
 	{
-		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"], null, $task["commentAuthor"]);
+		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"], null, $task["author"]);
 		$this->createComment($task['issueLink'],NOT_THE_USER_IN_REPO);
-		unset($this->tasks[$taskLink]);
 	}
 
 	/**
@@ -701,6 +755,33 @@ class gitReminder
 		}
 		return $bool;
 	}
+
+
+
+
+
+
+
+
+
+
+	/**********************************************************************
+	 **********************************************************************
+	 ****************************Here come public...***********************
+	 **********************************************************************
+	 **********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
 
 	/**
 	 * Login at github.com-API
@@ -766,25 +847,21 @@ class gitReminder
 		{
     		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
      		{
-     			if (array_key_exists($task['commentAId'], $this->oldTasks)){
-     				$this->log->notice(USED_BEFORE,$task);
-					unset($this->tasks[$taskLink]);
+				if($this->checkLimitPerRun() === false)
+					die(EDIT_MORE_THAN_05_ISSUES);
+
+				$bool = $this->checkContributorsForUserName($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser']);
+
+				if(!$this->checkCountigSettigs())
+					die(ACTION_LIMIT_OVER);
+
+				if($bool == true){
+					$this->processTask($task);
+					$task['doneDay'] = time();
 				}
-     			else{
-					if($this->checkLimitPerRun($this->runLimitInt) === false)
-						die(EDIT_MORE_THAN_05_ISSUES);
-
-					$bool = $this->checkContributorsForUserName($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser']);
-
-					if($bool == true){
-						$this->processTask($taskLink,$task);
-
-						if(!$this->checkCountigSettigs())
-							die(ACTION_LIMIT_OVER);
-					}
-					else{
-						$this->processErrorTask($taskLink,$task);
-					}
+				else{
+					$this->processErrorTask($task);
+					$task['doneDay'] = time();
 				}
     		}
         }
@@ -897,7 +974,6 @@ class gitReminder
     	echo "</pre><br><br>";
     	$this->log->notice(NOTICE_END);
     	$this->storeTasksInDatabase();
-    	$this->storeOldGitReminderNotification();
 		$this->storeSettings();
 		$this->closeDb();
     	return $this;
