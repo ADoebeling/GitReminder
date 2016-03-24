@@ -25,7 +25,7 @@ class gitReminder
 {
     /**
      * List of all found and pared tasks
-     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitel' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
+     * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitle' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
      */
     private $tasks = array();
 
@@ -164,7 +164,7 @@ class gitReminder
     			`ghRepo` VARCHAR(100) NOT NULL ,
     			`ghIssueId` INT (20) NOT NULL ,
     			`issueLink` VARCHAR(255) NOT NULL ,
-    			`issueTitel` VARCHAR(255) NOT NULL ,
+    			`issueTitle` VARCHAR(255) NOT NULL ,
     			`assignIssueToUser` VARCHAR(100) NOT NULL ,
     			`sendMailNotificationTo` VARCHAR(100) NOT NULL,
     			`commentMessage` VARCHAR(150) NOT NULL,
@@ -337,7 +337,7 @@ class gitReminder
 				ghRepo = '".$task['ghRepo']."',
 				ghIssueId = '".$task['ghIssueId']."',
 				issueLink = '".$task['issueLink']."',
-				issueTitel = '".$task['issueTitel']."',
+				issueTitle = '".$task['issueTitle']."',
 				assignIssueToUser = '".$task['assignIssueToUser']."',
 				sendMailNotificationTo = '".$sendMailNotificationTo."',
 				commentMessage = '".$commentMessage."',
@@ -355,7 +355,7 @@ class gitReminder
 				ghRepo = '".$task['ghRepo']."',
 				ghIssueId = '".$task['ghIssueId']."',
 				issueLink = '".$task['issueLink']."',
-				issueTitel = '".$task['issueTitel']."',
+				issueTitle = '".$task['issueTitle']."',
 				assignIssueToUser = '".$task['assignIssueToUser']."',
 				sendMailNotificationTo = '".$sendMailNotificationTo."',
 				commentMessage = '".$commentMessage."',
@@ -531,7 +531,7 @@ class gitReminder
 		foreach ($notifications as $element){
 			$repoOwner = $element["repository"]["owner"]["login"];
 			$repo =  $element["repository"]["name"];
-			$issueTitel = $element["subject"]["title"];
+			$issueTitle = $element["subject"]["title"];
 			$issuePath = str_replace("https://api.github.com","",$element["subject"]["url"]);
 			$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issuePath));
 
@@ -541,7 +541,7 @@ class gitReminder
 			$pages = intval($issueObj->getComments() / 30)+1;
 
 			//Write new Notification into the logfile
-			$this->log->info(NEW_NOTIFICATION,$repo.$issueTitel);
+			$this->log->info(NEW_NOTIFICATION,$repo.$issueTitle);
 
 			//Create the Index of one task
 			$taskIndex = "/$repoOwner/$repo/issue/$issueId";
@@ -551,7 +551,7 @@ class gitReminder
 				'ghRepoUser' => $repoOwner,
 				'ghRepo'	 => $repo,
 				'issueLink'  => $issuePath,
-				'issueTitel' => $issueTitel,
+				'issueTitle' => $issueTitle,
 				'ghIssueId'	 => $issueId,
 				'doneDay' => 0,
 			);
@@ -701,7 +701,7 @@ class gitReminder
 	 */
 	private function processTask($task)
 	{
-		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"], null, $task["assignIssueToUser"]);
+		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitle"], $task["ghIssueId"], null, $task["assignIssueToUser"]);
 
 		if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0'){
 			$link = str_replace("/repos", "", $task['issueLink']);
@@ -715,7 +715,7 @@ class gitReminder
 			//@todo implement
 		}
 
-		$this->log->info(ASSIGN_ISSUE_TO_USER,$task['ghIssueId'].$task['issueTitel'].$task['assignIssueToUser']);
+		$this->log->info(ASSIGN_ISSUE_TO_USER,$task['ghIssueId'].$task['issueTitle'].$task['assignIssueToUser']);
 
 		return true;
 	}
@@ -727,7 +727,7 @@ class gitReminder
 	 */
 	private function processErrorTask($task)
 	{
-		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitel"], $task["ghIssueId"], null, $task["author"]);
+		$this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitle"], $task["ghIssueId"], null, $task["author"]);
 		$this->createComment($task['issueLink'],NOT_THE_USER_IN_REPO);
 	}
 
