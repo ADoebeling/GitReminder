@@ -24,11 +24,6 @@ require_once '../config/config.php';
 class gitReminder
 {
     /**
-     * @const string NAME_OF_GITREMINDER Default name of GitHub-User
-     */
-    const NAME_OF_GITREMINDER = 'gitreminder';
-    
-    /**
      * List of all found and pared tasks
      * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitel' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
      */
@@ -303,7 +298,7 @@ class gitReminder
 	{
 		if($this->runLimitInt >= $actionLimitPerRun)
 		{
-			$this->log->warning(EDIT_MORE_THAN_20_ISSUES,$this->tasks);
+			$this->log->warning(EDIT_MORE_THAN_05_ISSUES,$this->tasks);
 			return false;
 		}
 		$this->runLimitInt++;
