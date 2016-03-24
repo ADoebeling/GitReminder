@@ -6,4 +6,4 @@ require_once ('../config/config.php');
     $gitReminder->setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
         ->loadGhNotifications(GITREMINDER_NAME)
         ->parseSourceText(GITREMINDER_NAME)
-        ->checkUserAndProcess();
+        ->process();

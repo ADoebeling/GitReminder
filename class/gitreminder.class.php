@@ -112,6 +112,7 @@ class gitReminder
 	}
 
 
+
 	/**
 	 * Create folder and data structure
 	 */
@@ -131,13 +132,6 @@ class gitReminder
 			}
 		}
 	}
-
-
-
-
-
-
-
 
 
 
@@ -253,16 +247,21 @@ class gitReminder
 	}
 
 
-
-
-
-
-
-
-
-
+	/**
+	 * Delete a File
+	 * It works with: checkUserAndProcess()
+	 * @param $filePath
+	 * @return bool
+	 */
+	private function deleteFile($filePath)
+	{
+		return unlink($filePath);
+	}
 
 	/**
+	 * Check the actual counting-number and the limit.
+	 * If the number is over limit it return false
+	 * It works with: checkUserAndProcess()
 	 * @param $actionLimit
 	 * @return bool
 	 */
@@ -754,26 +753,109 @@ class gitReminder
 
 
 
+	/**
+	 * Create a Comment in GH
+	 * @param $ghIssueLink
+	 * @param $body
+	 * @return $this
+	 */
+	private function createComment($ghIssueLink,$body)
+	{
+		if(is_string($ghIssueLink) && isset($body))
+		{
+			switch($body)
+			{
+				case 'do':
+					$body = COMMENT_BY_DO;
+					break;
+				case 'wait':
+					$body = COMMENT_BY_WAIT;
+					break;
+				case '':
+					$body = COMMENT_BY_;
+					break;
+				case 'later':
+					$body = COMMENT_BY_LATER;
+					break;
+				case 'loggasch':
+					$body = COMMENT_BY_LOGGASCH;
+					break;
+			}
+
+			$data = array();
+			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data['body'] = $body), 201, 'GitHubIssueComment');
+			return true;
+		}
+		else
+		{
+			$this->log->warning(CANT_CREATE_COMMENT,array($ghIssueLink,$body));#
+			return false;
+		}
+	}
 
 
+	/**
+	 * Load an Issue with all important information
+	 * @param $repoOwner
+	 * @param $repo
+	 * @param $issueId
+	 * @return bool
+	 */
+	private function getIssue($repoOwner,$repo,$issueId)
+	{
+		if (is_int($issueId) && is_string($repo) && is_string($repoOwner))
+		{
+			$issue = $this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId",'GET', array(), 200, 'GitHubIssue');
+			return $issue;
+		}
+		else
+		{
+			$this->log->warning(CANT_LOAD_ISSUE,array($repo,$issueId));
+			return false;
+		}
+	}
 
+	/**
+	 * Send mail-notification
+	 * @param $mailAddress
+	 * @param $text
+	 * @param string $error
+	 * @return bool
+	 */
+	private function sendMailNotification($mailAddress,$text,$link = NULL,$error = MAIL_NO_ERROR_SEND)
+	{
+		$header = MAIL_HEADER;
+		$header .= 'To: <'.$mailAddress.'>' . "\r\n";
+
+		$message = MAIL_MESSAGE_START;
+
+		if ($text == "newissue")
+		{
+			$subject = 	MAIL_ISSUE_SUBJECT;
+			$message .= MAIL_ISSUE_TEXT;
+			$message .= " ".$link." ";
+			$message .= MAIL_ISSUE_TEXT_END;
+		}
+		elseif ($text == "error")
+		{
+			$subject = 	MAIL_ERROR_SUBJECT;
+			$message .= MAIL_ERROR_TEXT;
+			$message .= $error;
+		}
+
+		$message .= MAIL_MESSAGE_END;
+
+		return mail($mailAddress, $subject, $message,$header);
+	}
 
 
 
 
 	/**********************************************************************
 	 **********************************************************************
-	 ****************************Here come public...***********************
+	 *************************Here it comes public...**********************
 	 **********************************************************************
 	 **********************************************************************/
-
-
-
-
-
-
-
-
 
 
 
@@ -837,128 +919,28 @@ class gitReminder
      * Processes all $this->tasks and perform all planned todos
      * @return $this
      */
-    public function checkUserAndProcess()
+    public function process()
 	{
     	foreach ($this->tasks as $taskLink => &$task)
 		{
-    		if ($task["matureDate"] <= time() && isset($task["ghRepoUser"]))
-     		{
-				if($this->checkLimitPerRun() === false)
-					die(EDIT_MORE_THAN_05_ISSUES);
+    		if((!$this->checkLimitPerRun() || !$this->checkCountigSettigs()) && DELETE_FILE_FOR_SAFE == true){
+				$this->deleteFile('../htdocs/index_2.php');
+				die(EDIT_MORE_THAN_05_ISSUES.ACTION_LIMIT_OVER);
+			}
 
-				$bool = $this->checkContributorsForUserName($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser']);
-
-				if(!$this->checkCountigSettigs())
-					die(ACTION_LIMIT_OVER);
-
-				if($bool == true){
-					$this->processTask($task);
-					$task['doneDay'] = time();
-				}
-				else{
-					$this->processErrorTask($task);
-					$task['doneDay'] = time();
-				}
-    		}
+			if($this->checkContributorsForUserName($task['ghRepoUser'],$task['ghRepo'],$task['assignIssueToUser'])){
+				$this->processTask($task);
+				$task['doneDay'] = time();
+			}
+			else{
+				$this->processErrorTask($task);
+				$task['doneDay'] = time();
+			}
         }
         return $this;
     }
 
-	/**
-	 * Create a Comment in GH
-	 * @param $ghIssueLink
-	 * @param $body
-	 * @return $this
-	 */
-	public function createComment($ghIssueLink,$body)
-	{
-		if(is_string($ghIssueLink) && isset($body))
-		{
-			switch($body)
-			{
-				case 'do':
-					$body = COMMENT_BY_DO;
-					break;
-				case 'wait':
-					$body = COMMENT_BY_WAIT;
-					break;
-				case '':
-					$body = COMMENT_BY_;
-					break;
-				case 'later':
-					$body = COMMENT_BY_LATER;
-					break;
-				case 'loggasch':
-					$body = COMMENT_BY_LOGGASCH;
-					break;
-			}
 
-			$data = array();
-			$data['body'] = $body;
-			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
-		}
-		else
-		{
-			$this->log->warning(CANT_CREATE_COMMENT,array($ghIssueLink,$body));
-		}
-		return $this;
-	}
-
-	/**
-	 * Load an Issue with all important information
-	 * @param $repoOwner
-	 * @param $repo
-	 * @param $issueId
-	 * @return bool
-	 */
-	public function getIssue($repoOwner,$repo,$issueId)
-	{
-		if (is_int($issueId) && is_string($repo) && is_string($repoOwner))
-		{
-			$issue = $this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId",'GET', array(), 200, 'GitHubIssue');
-			return $issue;
-		}
-		else
-		{
-			$this->log->warning(CANT_LOAD_ISSUE,array($repo,$issueId));
-			return false;
-		}
-	}
-
-	/**
-	 * Send mail-notification
-	 * @param $mailAddress
-	 * @param $text
-	 * @param string $error
-	 * @return $this
-	 */
-    public function sendMailNotification($mailAddress,$text,$link = NULL,$error = MAIL_NO_ERROR_SEND)
-    {    	
-    	$header = MAIL_HEADER;
-    	$header .= 'To: <'.$mailAddress.'>' . "\r\n";
-    	
-    	$message = MAIL_MESSAGE_START;
-    	
-    	if ($text == "newissue")
-    	{
-    		$subject = 	MAIL_ISSUE_SUBJECT;
-    		$message .= MAIL_ISSUE_TEXT;
-			$message .= " ".$link." ";
-			$message .= MAIL_ISSUE_TEXT_END;
-    	}
-    	elseif ($text == "error")
-    	{
-    		$subject = 	MAIL_ERROR_SUBJECT;
-    		$message .= MAIL_ERROR_TEXT;
-    		$message .= $error;
-    	}
-    	
-    	$message .= MAIL_MESSAGE_END;
-    	
-    	mail($mailAddress, $subject, $message,$header);
-        
-    	return $this;
-    }
 
 	/**
 	 * Safe all Tasks and show all tasks
