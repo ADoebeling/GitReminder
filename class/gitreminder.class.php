@@ -72,7 +72,7 @@ class gitReminder
     	$this->log = new log();
     	$this->log->notice(NOTICE_START);
     	$this->connectDb();
-		$this->createDB();
+		$this->createTable();
 		$this->loadStoredTasksFromDb();
 		$this->loadSettingsFromDB();
     	return $this;
@@ -147,7 +147,7 @@ class gitReminder
 	 * need $this->mySqlLink
 	 * @return bool
 	 */
-	private function createDB()
+	private function createTable()
 	{
 		$sql = "SHOW TABLES IN `tasks`";
 		$result = mysqli_query($this->mySqlLink,$sql);
