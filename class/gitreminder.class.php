@@ -23,6 +23,14 @@ require_once '../config/config.php';
  */
 class gitReminder
 {
+
+	/**
+	 * The clientobject
+	 * @var object
+	 */
+	private $githubRepo;
+
+
     /**
      * List of all found and pared tasks
      * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitle' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
@@ -192,10 +200,7 @@ class gitReminder
 	 */
     private function loadStoredTasksFromDb()
     {
-		$timeStamp = time();
-    	$sql = "SELECT * FROM tasks WHERE `matureDate` < $timeStamp && doneDay = 0";
-    	
-    	$dbAnswer = $this->mySqlI->query($sql);
+		$dbAnswer = $this->mySqlI->query("SELECT * FROM tasks WHERE `matureDate` < ".time()." && doneDay = 0");
 
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
@@ -224,8 +229,10 @@ class gitReminder
 
 		$dbAnswer = $this->mySqlI->query($sql);
 
-		while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
-			$oldTask[$dbLine['taskName']] = $dbLine;
+		if($dbAnswer !== false) {
+			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
+				$oldTask[$dbLine['taskName']] = $dbLine;
+			}
 		}
 
 		if($oldTask === false)
@@ -243,8 +250,7 @@ class gitReminder
 	 */
 	private function loadSettingsFromDB()
 	{
-		$sql = "SELECT * FROM settings";
-		$dbAnswer = $this->mySqlI->query($sql);
+		$dbAnswer = $this->mySqlI->query("SELECT * FROM settings");
 
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
@@ -379,9 +385,9 @@ class gitReminder
 			";
 
 			if(!$this->mySqlI->query($sql)) {
-				echo "<br>".CANT_INSERT_OR_UPDATE_DB . ' tasks ';
+				echo CANT_INSERT_OR_UPDATE_DB . ' tasks ';
+				$this->log->warning(CANT_INSERT_OR_UPDATE_DB . ' tasks ',$task);
 			}
-
 		}
 		return $this;
 	}
@@ -408,8 +414,10 @@ class gitReminder
 				;
 	    	";
 
-			if(!$this->mySqlI->query($sql))
+			if(!$this->mySqlI->query($sql)) {
 				echo CANT_INSERT_OR_UPDATE_DB . 'settings';
+				$this->log->warning(CANT_INSERT_OR_UPDATE_DB . ' settings ',$setting);
+			}
 		}
 		return $this;
 	}
@@ -530,7 +538,7 @@ class gitReminder
 			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
 			//Calc the loop depending on comments
 			$pages = intval($issueObj->getComments() / 30)+1;
-
+			$status = $issueObj->getState();
 			//Write new Notification into the logfile
 			$this->log->info(NEW_NOTIFICATION,$repo.$issueTitle);
 
@@ -547,12 +555,21 @@ class gitReminder
 				'doneDay' => 0,
 			);
 
-			// Load all comments an look
-			// for task in issue-body instead of issue-comment
+			// Load all comments and look for task in issue-body instead of issue-comment
 			if (!$this->loadAllComments($repoOwner,$repo,$issueId,$pages,$nameGitReminder,$taskIndex)) {
+
 				//Load the issue-body; Check, if the GitReminder-Name is in the issue-body...
-				if(!$this->loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex))
-					echo CANT_FIND_GR_IN_COMMENTS;
+				if(!$this->loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex)){
+
+					//If GR-Name is not in the comments or issue, we create a comment, if the issue is open.
+					if($status == 'open'){
+						$this->createComment($this->tasks[$taskIndex]['issueLink'] , CANT_FIND_GR_IN_COMMENTS);
+						$this->log->warning(CANT_FIND_GR_IN_COMMENTS,$this->tasks[$taskIndex]);
+						unset($this->tasks[$taskIndex]);
+					}
+					$this->log->warning(CANT_FIND_GR_IN_COMMENTS .  "Issue is closed",$this->tasks[$taskIndex]);
+					unset($this->tasks[$taskIndex]);
+				}
 			}
 		}
 	}
@@ -757,7 +774,8 @@ class gitReminder
 			}
 
 			$data = array();
-			$this->githubRepo->request("$ghIssueLink/comments", 'POST', json_encode($data['body'] = $body), 201, 'GitHubIssueComment');
+			$data['body'] = $body;
+			$this->githubRepo->request($ghIssueLink."/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
 			return true;
 		}
 		else
@@ -853,17 +871,20 @@ class gitReminder
     /**
      * Load unread GitHub-Notifications
      * @param string $nameGitReminder
+	 * @param bool $markAsRead
      * @return $this
      */
-    public function loadGhNotifications($nameGitReminder = self::NAME_OF_GITREMINDER)
+    public function loadGhNotifications($nameGitReminder = self::NAME_OF_GITREMINDER,$markAsRead)
     {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
 
         if(count($notifications)>=30)$this->log->warning(CALLED_TOO_OFTEN,$notifications);
 
-    	//Mark notifications as read.
-    	$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+		if($markAsRead) {
+			//Mark notifications as read.
+			$this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+		}
 
 		$this->storeNotificationsInThisTasks($notifications,$nameGitReminder);
 
@@ -917,7 +938,6 @@ class gitReminder
 				}
 			}
 			else {
-				var_dump($task);
 				unset($this->tasks[$taskLink]);
 			}
 		}
