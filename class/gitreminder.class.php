@@ -164,9 +164,8 @@ class gitReminder
 					`sendSms` INT(50) NOT NULL,
 					`sourceText` VARCHAR(500) NOT NULL ,
 					`author` VARCHAR(100) NOT NULL ,
-					`commentCreateDate` INT(12) NOT NULL ,
-					`matureDateInDateform` VARCHAR(20) NOT NULL ,
-					`matureDate` INT(12) NOT NULL,
+					`commentCreateDate` DATETIME NOT NULL ,
+					`matureDate` DATETIME NOT NULL,
 					`commentAId` INT(20) NOT NULL,
 					`doneDay` INT(12) NOT NULL
 					)
@@ -200,17 +199,15 @@ class gitReminder
 	 */
     private function loadStoredTasksFromDb()
     {
-		$dbAnswer = $this->mySqlI->query("SELECT * FROM tasks WHERE `matureDate` < ".time()." && doneDay = 0");
-
+		$dbAnswer = $this->mySqlI->query("SELECT * FROM tasks WHERE UNIX_TIMESTAMP(matureDate) < ".time()." && doneDay = 0");
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
 				$this->tasks[$dbLine['taskName']] = $dbLine;
 				$this->tasks[$dbLine['taskName']]['issueTitle'] = str_replace(['\''],['\''],$dbLine['issueTitle']);
 				$this->tasks[$dbLine['taskName']]['ghIssueId'] = intval($this->tasks[$dbLine['taskName']]['ghIssueId']);
+				$this->tasks[$dbLine['taskName']]['matureDate'] = strtotime($dbLine['matureDate']);
+				$this->tasks[$dbLine['taskName']]['commentCreateDate'] = strtotime($dbLine['commentCreateDate']);
 			}
-		}
-		else{
-			echo "No tasks in DB";
 		}
 
 		return $this;
@@ -225,7 +222,7 @@ class gitReminder
 	{
 		$oldTask = false;
 
-		$sql = "select * from tasks WHERE `commentAId` = "."'$commentId'";
+		$sql = "select * from tasks WHERE `commentAId` = '$commentId' && `doneDay` != 0";
 
 		$dbAnswer = $this->mySqlI->query($sql);
 
@@ -257,13 +254,9 @@ class gitReminder
 				$this->settings[$dbLine['name']] = array('value' => $dbLine['value'], 'lastUpdate' => intval($dbLine['lastUpdate']));
 			}
 		}
-		else{
-			echo "No settings in DB";
-		}
 
 		//Load fallback if entry "actionLimit" isn't in the array
 		if(!isset($this->settings['actionLimit'])){
-			echo "New init settings..";
 			$this->settings['actionLimit'] = array('value' => 0, 'lastUpdate' => 0);
 		}
 	}
@@ -343,6 +336,9 @@ class gitReminder
 
 			if (!isset($task['sms']))$task['sms'] = 0;
 
+			$dateTime = date("Y-m-d H:i:s",$task['matureDate']);
+			$commentCreateDate = date("Y-m-d H:i:s",$task['commentCreateDate']);
+
 			$sql = "
 			INSERT INTO tasks
 			SET
@@ -358,9 +354,8 @@ class gitReminder
 				sendSms = '".$task['sms']."',
 				sourceText = '".$task['sourceText']."',
 				author = '".$task['author']."',
-				commentCreateDate = '".$task['commentCreateDate']."',
-				matureDateInDateform = '".$task['matureDateInDateform']."',
-				matureDate = '".$task['matureDate']."',
+				commentCreateDate = '".$commentCreateDate."',
+				matureDate = '".$dateTime."',
 				commentAId = '".$task['commentAId']."',
 				doneDay = '".$task['doneDay']."'
 
@@ -376,9 +371,8 @@ class gitReminder
 				sendSms = '".$task['sms']."',
 				sourceText = '".$task['sourceText']."',
 				author = '".$task['author']."',
-				commentCreateDate = '".$task['commentCreateDate']."',
-				matureDateInDateform = '".$task['matureDateInDateform']."',
-				matureDate = '".$task['matureDate']."',
+				commentCreateDate = '".$commentCreateDate."',
+				matureDate = '".$dateTime."',
 				commentAId = '".$task['commentAId']."',
 				doneDay = '".$task['doneDay']."'
 				;
@@ -592,7 +586,6 @@ class gitReminder
 		//Check the timeformat and create the maturedate.
 		if ($timeFormat == 'd' || $timeFormat == 't'){
 			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
-			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 
 			if ($value['matureDate'] >= 366){
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
@@ -603,7 +596,6 @@ class gitReminder
 		}
 		elseif ($timeFormat == 'h' || $timeFormat == 's'){
 			$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
-			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 			if ($value['matureDate'] >= 8761){
 				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
@@ -613,7 +605,6 @@ class gitReminder
 		}
 		elseif ($timeFormat == 'm'){
 			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
-			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 
 			if ($value['matureDate'] >= 525600){
 				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId'].$comment['ghRepo']);
@@ -624,11 +615,9 @@ class gitReminder
 		}
 		elseif ($timeFormat == ' '){
 			$comment['matureDate'] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
-			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 		}
 		else{
 			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
-			$comment['matureDateInDateform'] = date("d.m.Y H:i",$comment["matureDate"]);
 		}
 
 		return $comment;
@@ -921,7 +910,7 @@ class gitReminder
     	foreach ($this->tasks as $taskLink => &$task)
 		{
 			if($this->checkCommentIdInDb($task['commentAId']) === false) {
-				if ($task['matureDate'] <= time()) {
+				if ($task['matureDate'] < time()) {
 
 					if ((!$this->checkActionLimitPerRun() || !$this->checkActionLimit()) && DELETE_FILE_FOR_SAFE == true) {
 						$this->deleteFile('../htdocs/index_2.php');
