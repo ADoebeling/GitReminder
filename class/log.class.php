@@ -9,6 +9,7 @@ class log
 	protected function add($level, $desc, $array = NULL)
 	{
 		$this->entrys[] = array('date' => date("d.m.y H:i:s",time()), 'level' => $level, 'desc' => $desc, 'array' => $array);
+		return true;
 	}
 	
 	public function debug($desc, $array = NULL)

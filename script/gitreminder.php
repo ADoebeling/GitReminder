@@ -1,9 +1,14 @@
 <?php
-require_once('../class/gitreminder.class.php');
-require_once ('../config/config.php');
+require_once('../bootstrap.php');
 
     $gitReminder = new gitReminder();
-    $gitReminder->setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
-        ->loadGhNotifications(GITREMINDER_NAME,true)
+    $gitReminder
+        ->setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
+        ->loadGhNotifications(GITREMINDER_NAME)
         ->parseSourceText(GITREMINDER_NAME)
-        ->process();
+        ->checkActionLimitPerRun()
+		->checkActionLimit()
+        ->markNotificationAsRead()
+        ->process()
+        ->displayTasks();
+
