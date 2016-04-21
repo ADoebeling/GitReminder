@@ -610,7 +610,7 @@ class gitReminder
 			//@todo implement
 		}
 
-		$this->log->info(ASSIGN_ISSUE_TO_USER,$task['ghIssueId'].$task['issueTitle'].$task['assignIssueToUser']);
+		$this->log->info(ASSIGN_ISSUE_TO_USER,'|| ID:'.$task['ghIssueId'].' || Issue title:'.$task['issueTitle'].' || Assigned user:'.$task['assignIssueToUser']);
 
 		return true;
 	}
