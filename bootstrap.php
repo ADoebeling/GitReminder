@@ -14,7 +14,7 @@ require_once 'class/gitreminder.class.php';
 function exceptionHandler(\Exception $e)
 {
     echo '<h1>Error</h1><p>Sorry, the script died with a exception</p>';
-    log2::error($e->getMessage().' in '.$e->getFile().':'.$e->getLine(), __FUNCTION__,$e->getTrace());
+    log::error($e->getMessage().' in '.$e->getFile().':'.$e->getLine(), __FUNCTION__,$e->getTrace());
     mail(ADMIN_MAIL,'[GitReminder] System got locked',$e->getMessage().' in '.$e->getFile().':'.$e->getLine()."\n\n". __FUNCTION__.$e->getTrace());
     @trigger_error('',E_USER_ERROR);
 }

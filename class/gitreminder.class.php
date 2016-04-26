@@ -108,7 +108,7 @@ class gitReminder
 		$this->mySqlI = new mysqli($dbHost,$dbUser,$dbPass,$dbName);
 
     	if($this->mySqlI->connect_error){
-			throw new Exception(USE_DATABASE);
+			throw new Exception(EXCEPTION_NEED_DATABASE);
 		}
 		$this->mySqlI->set_charset('utf8');
 
@@ -170,7 +170,7 @@ class gitReminder
 				ENGINE = MYISAM ;";
 
 			if(!$this->mySqlI->query($sql))
-				throw new Exception(CANT_CREATE_TABLE." 'tasks'");
+				throw new Exception(EXCEPTION_CANT_CREATE_TABLE." 'tasks'");
 		}
 
 		if($this->mySqlI->query('select 1 from `settings` LIMIT 1') === false){
@@ -183,7 +183,7 @@ class gitReminder
 				ENGINE = MYISAM ;";
 
 			if (!$this->mySqlI->query($sql))
-				throw new Exception(CANT_CREATE_TABLE." 'setting'");
+				throw new Exception(EXCEPTION_CANT_CREATE_TABLE." 'setting'");
 		}
 		return true;
 	}
@@ -295,7 +295,7 @@ class gitReminder
 			";
 
 			if(!$this->mySqlI->query($sql)) {
-				throw new Exception(CANT_INSERT_OR_UPDATE_DB . ' tasks ');
+				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . ' tasks ');
 			}
 		}
 		return $this;
@@ -324,7 +324,7 @@ class gitReminder
 	    	";
 
 			if(!$this->mySqlI->query($sql)) {
-				throw new Exception(CANT_INSERT_OR_UPDATE_DB . 'settings');
+				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . 'settings');
 			}
 		}
 		return $this;
@@ -351,7 +351,7 @@ class gitReminder
 			$pages = intval($issueObj->getComments() / 30)+1;
 			$status = $issueObj->getState();
 			//Write new Notification into the logfile
-			$this->log->info(NEW_NOTIFICATION,$repo." -> ".$issueTitle);
+			$this->log->info(INFO_GR_HAS_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
 
 			//Create the Index of one task
 			$taskIndex = "/$repoOwner/$repo/issue/$issueId";
@@ -372,8 +372,8 @@ class gitReminder
 				//Load the issue-body; Check, if the GitReminder-Name is in the issue-body...
 				if(!$this->loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex)){
 					//If GR-Name is not in the comments or issue, we create a comment, if the issue is open.
-					$this->createComment($this->tasks[$taskIndex]['issueLink'] , CANT_FIND_GR_IN_COMMENTS);
-					$this->log->warning('Can\'t find GitReminder',CANT_FIND_GR_IN_COMMENTS,$this->tasks[$taskIndex]);
+					$this->createComment($this->tasks[$taskIndex]['issueLink'],WARNING_CANT_FIND_GR_IN_COMMENTS);
+					$this->log->warning('Can\'t find GitReminder',WARNING_CANT_FIND_GR_IN_COMMENTS,$this->tasks[$taskIndex]);
 					unset($this->tasks[$taskIndex]);
 				}
 			}
@@ -494,7 +494,7 @@ class gitReminder
 		if ($timeFormat == 'h' || $timeFormat == 's'){
 			$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
 			if ($value['matureDate'] >= 366*24){
-				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
+				$this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
@@ -504,7 +504,7 @@ class gitReminder
 			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
 
 			if ($value['matureDate'] >= 366*24*60){
-				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
+				$this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
@@ -515,7 +515,7 @@ class gitReminder
 			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
 			if ($value['matureDate'] >= 366){
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
-				$this->log->warning(ASSIGN_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
+				$this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
@@ -594,7 +594,7 @@ class gitReminder
 			//@todo implement
 		}
 
-		$this->log->info(ASSIGN_ISSUE_TO_USER,'|| ID:'.$task['ghIssueId'].' || Issue title:'.$task['issueTitle'].' || Assigned user:'.$task['assignIssueToUser']);
+		$this->log->info(INFO_ASSIGN_ISSUE_TO_AN_USER,'|| ID:'.$task['ghIssueId'].' || Issue title:'.$task['issueTitle'].' || Assigned user:'.$task['assignIssueToUser']);
 
 		return true;
 	}
@@ -750,7 +750,7 @@ class gitReminder
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
 
-        if(count($notifications)>=30)$this->log->warning(CALLED_TOO_OFTEN,$notifications);
+        if(count($notifications)>=30)$this->log->warning(WARNING_GR_CALLED_TOO_OFTEN,$notifications);
 
 		$this->loadNotificationsToTasks($notifications,$nameGitReminder);
 
@@ -783,7 +783,7 @@ class gitReminder
 	 * @return $this
 	 * @throws Exception
 	 */
-	public function checkActionLimit($actionLimit = ACTION_LIMIT)
+	public function checkActionLimit($actionLimit = ACTION_LIMIT_DAY)
 	{
 		if(count($this->tasks) >= $actionLimit){
 			throw new Exception("System over actionlimit ($actionLimit)");
@@ -828,7 +828,7 @@ class gitReminder
 						$this->processTask($task);
 						$task['doneDay'] = time();
 					} else {
-						$this->processErrorTask($task, NOT_THE_USER_IN_REPO);
+						$this->processErrorTask($task,COMMENT_NOT_THE_USER_IN_REPO);
 						$task['doneDay'] = time();
 					}
 				}
