@@ -44,8 +44,6 @@ class gitReminder
      */
     private $log;
 
-	private $log;
-
 
 	/**
 	 * @var mysqli $mySqlI The mySql-Object
@@ -142,14 +140,6 @@ class gitReminder
 		foreach ($this->folderStructure as $folder){
 			if(!file_exists($folder)){
 				mkdir($folder,0777);
-			}
-		}
-		$date = date("Y-m",time());
-		$logDir = __DIR__."/../logs";
-		$logFileDirDate = $logDir."/".$date."_logfolder";
-		if (file_exists($logDir)){
-			if (!file_exists($logFileDirDate)){
-				mkdir($logFileDirDate,0777);
 			}
 		}
 	}
