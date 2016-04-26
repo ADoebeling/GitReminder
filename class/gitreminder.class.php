@@ -351,7 +351,7 @@ class gitReminder
 			$pages = intval($issueObj->getComments() / 30)+1;
 			$status = $issueObj->getState();
 			//Write new Notification into the logfile
-			$this->log->info(INFO_GR_HAS_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
+			$this->log->info(INFO_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
 
 			//Create the Index of one task
 			$taskIndex = "/$repoOwner/$repo/issue/$issueId";
