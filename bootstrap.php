@@ -4,7 +4,6 @@ error_reporting(E_ALL);
 
 require_once '3rd-party/github-php-client/client/GitHubClient.php';
 require_once 'class/log.class.php';
-require_once 'class/log2.class.php';
 require_once 'config/config.php';
 require_once 'class/gitreminder.class.php';
 
