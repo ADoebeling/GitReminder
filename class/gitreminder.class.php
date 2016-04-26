@@ -24,13 +24,11 @@ class gitReminder
 	 */
 	private $githubRepo;
 
-
     /**
      * List of all found and pared tasks
      * @var array $tasks['/ghRepoUser/ghRepo/issues/ghIssueId'] = array('ghRepoUser' => X, 'ghRepo' => X, 'issueLink' => X, 'issueTitle' => X, 'ghIssueId' => X, 'assignIssueToUser' => X, 'sourceText' => X, 'matureDate' => X, 'author' => X, 'commentCreateDate' => X, ['sendMailNotificationTo' => X, 'commentMessage' => X, 'sms' => X])
      */
     private $tasks = array();
-
 
 	/**
 	 * In this global-var are all settings
@@ -56,7 +54,6 @@ class gitReminder
      * @var array $folderStructure
      */
     private $folderStructure = array('../logs');
-    
 
     /**
      * Initialize github- and logger-class
@@ -95,7 +92,6 @@ class gitReminder
 		}
 	}
 
-
 	/**
 	 * DO the db-Connection and load all Data
 	 * the call is in __construct()
@@ -130,8 +126,6 @@ class gitReminder
 		 return $this->mySqlI->close();
 	}
 
-
-
 	/**
 	 * Create folder and data structure
 	 */
@@ -143,7 +137,6 @@ class gitReminder
 			}
 		}
 	}
-
 
 	/**
 	 * Create a Database
@@ -179,7 +172,6 @@ class gitReminder
 			if(!$this->mySqlI->query($sql))
 				throw new Exception(CANT_CREATE_TABLE." 'tasks'");
 		}
-
 
 		if($this->mySqlI->query('select 1 from `settings` LIMIT 1') === false){
 			$sql = "
@@ -499,7 +491,6 @@ class gitReminder
 		}
 
 		//Check the timeformat and create the maturedate.
-
 		if ($timeFormat == 'h' || $timeFormat == 's'){
 			$comment["matureDate"] = $value['matureDate']*60*60+$comment['commentCreateDate'];
 			if ($value['matureDate'] >= 366*24){
