@@ -11,13 +11,14 @@
  * @author      Andreas Doebeling <ad@1601.com>
  * @copyright   1601.communication gmbh
  * @license     CC-BY-SA | https://creativecommons.org/licenses/by-sa/3.0
+ * @Link		https://github.com/lb1601com
+ * @Link		https://www.facebook.com/lukas.beck36
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
  * @link        http://www.1601.com
  */
 class gitReminder
 {
-
 	/**
 	 * The clientobject
 	 * @var object
@@ -42,12 +43,10 @@ class gitReminder
      */
     private $log;
 
-
 	/**
 	 * @var mysqli $mySqlI The mySql-Object
 	 */
 	private $mySqlI;
-
 
     /**
      * Array of Folderstructure
@@ -290,9 +289,7 @@ class gitReminder
 				commentCreateDate = '".$commentCreateDate."',
 				matureDate = '".$dateTime."',
 				commentAId = '".$task['commentAId']."',
-				doneDay = '".$task['doneDay']."'
-				;
-			";
+				doneDay = '".$task['doneDay']."';";
 
 			if(!$this->mySqlI->query($sql)) {
 				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . ' tasks ');
@@ -344,12 +341,16 @@ class gitReminder
 			$issuePath = str_replace("https://api.github.com","",$element["subject"]["url"]);
 			$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issuePath));
 
-			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
+			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);//
 
 			/*Check how many comments the Issue has.
 			Calc the loop depending on comments*/
 			$pages = intval($issueObj->getComments() / 30)+1;
-			$status = $issueObj->getState();
+
+			// Check the state of an issue (open/close)
+			//$status = $issueObj->getState();
+			//var_dump($status);
+
 			//Write new Notification into the logfile
 			$this->log->info(INFO_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
 
@@ -444,9 +445,9 @@ class gitReminder
 	{
 		$issue = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId, 'GET', array(), 200, 'GitHubPullComment', true);
 
-		if($this->lookForGrInIssue($issue,$nameGitReminder,$taskIndex))
+		if($this->lookForGrInIssue($issue,$nameGitReminder,$taskIndex)) {
 			return true;
-
+		}
 		return false;
 	}
 
@@ -726,7 +727,6 @@ class gitReminder
 	 ******************************************************************************************************************************************************************************************************************
 	 ******************************************************************************************************************************************************************************************************************/
 
-
 	/**
 	 * Login at github.com-API
 	 * @param $ghUser
@@ -745,7 +745,7 @@ class gitReminder
      * @param string $nameGitReminder
      * @return $this
      */
-    public function loadGhNotifications($nameGitReminder = self::NAME_OF_GITREMINDER)
+    public function loadGhNotifications($nameGitReminder)
     {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
