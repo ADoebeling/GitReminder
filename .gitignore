@@ -1,7 +1,12 @@
 tasks.phpserialize
 tasks.json
 logs/
+class/gittrigger.class.php
+config/gittrigger.conf.php
+class/log_gittrigger.class.php
+htdocs/gittrigger.php
 config.php
 index.php
+triggerData/*
 /htdocs/index.php
 index_2.php
