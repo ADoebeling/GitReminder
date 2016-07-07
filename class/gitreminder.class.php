@@ -62,7 +62,7 @@ class gitReminder
 		$this->log = new log();
 		$this->lockFile();
     	$this->createFileStructure();
-    	$this->log->notice(NOTICE_START, "GitReminder start work here ...");
+    	$this->log->notice(NOTICE_START, "GitReminder start work here ---------------------------------------------------------------------");
     	$this->connectDb();
 		$this->createTableInDb();
 		$this->loadStoredTasksFromDb();
@@ -104,7 +104,6 @@ class gitReminder
 	 */
     private function connectDb($dbHost = DB_HOST,$dbUser = DB_USER, $dbPass = DB_PASS, $dbName = DB_NAME)
     {
-		$this->log->info('Function: connectDb()','Function start.');
 		$this->mySqlI = new mysqli($dbHost,$dbUser,$dbPass,$dbName);
 
     	if($this->mySqlI->connect_error){
@@ -123,7 +122,6 @@ class gitReminder
 	 */
 	private function closeDb()
 	{
-		$this->log->info('Function: closeDb()','Function start.');
 		return $this->mySqlI->close();
 	}
 
@@ -132,7 +130,6 @@ class gitReminder
 	 */
 	private function createFileStructure()
 	{
-		$this->log->info('Function: createFileStructure()','Function start.');
 		foreach ($this->folderStructure as $folder){
 			if(!file_exists($folder)){
 				mkdir($folder,0777);
@@ -149,7 +146,6 @@ class gitReminder
 	 */
 	private function createTableInDb()
 	{
-		$this->log->info('Function: createTableInDb()','Function start.');
 		if($this->mySqlI->query('select 1 from `tasks` LIMIT 1') === false){
 			$sql = "
 				CREATE TABLE IF NOT EXISTS tasks(
@@ -201,7 +197,6 @@ class gitReminder
 	 */
     private function loadStoredTasksFromDb()
 	{
-		$this->log->info('Function: loadStoredTasksFromDb()','Function start.');
 		$dbAnswer = $this->mySqlI->query("SELECT * FROM tasks WHERE matureDate < now() && doneDay = 0");
 		if($dbAnswer !== false) {
 			while ($dbLine = mysqli_fetch_assoc($dbAnswer)) {
@@ -225,7 +220,6 @@ class gitReminder
 	 */
 	private function checkCommentStatus($commentId)
 	{
-		$this->log->info('Function: checkCommentStatus()','Function start.');
 		$sql = "select * from tasks WHERE `commentAId` = '$commentId' && `doneDay` != 0";
 		return $this->mySqlI->query($sql)->num_rows > 0 ? true : false;
 	}
@@ -236,7 +230,6 @@ class gitReminder
 	 */
 	private function loadSettingsFromDB()
 	{
-		$this->log->info('Function: loadSettingsFromDB()','Function start.');
 		$dbAnswer = $this->mySqlI->query("SELECT * FROM settings");
 
 		while ($dbLine = $dbAnswer->fetch_assoc()) {
@@ -252,7 +245,6 @@ class gitReminder
 	 */
 	private function storeTasksInDatabase()
 	{
-		$this->log->info('Function: storeTasksInDatabase()','Function start.');
 		foreach ($this->tasks as $taskName=>$task)
 		{
 			if (!isset($task['sendMailNotificationTo']))$task['sendMailNotificationTo'] = 0;
@@ -315,7 +307,6 @@ class gitReminder
 	 */
 	private function storeSettings()
 	{
-		$this->log->info('Function: storeSettings()','Function start.');
 		foreach ($this->settings as $name => $setting)
 		{
 			$sql = "
@@ -345,7 +336,6 @@ class gitReminder
 	 */
 	private function loadNotificationsToTasks($notifications, $nameGitReminder = GITREMINDER_NAME)
 	{
-		$this->log->info('Function: loadNotificationsToTasks()','Function start.');
 		foreach ($notifications as $element){
 			$repoOwner = $element["repository"]["owner"]["login"];
 			$repo =  $element["repository"]["name"];
@@ -358,10 +348,6 @@ class gitReminder
 			/*Check how many comments the Issue has.
 			Calc the loop depending on comments*/
 			$pages = intval($issueObj->getComments() / 30)+1;
-
-			// Check the state of an issue (open/close)
-			//$status = $issueObj->getState();
-			//var_dump($status);
 
 			//Write new Notification into the logfile
 			$this->log->info(INFO_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
@@ -406,11 +392,10 @@ class gitReminder
 	 */
 	private function loadAllComments($repoOwner,$repo,$issueId,$loop,$nameGitReminder,$taskIndex)
 	{
-		$this->log->info('Function: loadAllComments()','Function start.');
 		for ($i=$loop;$i>=1;$i--){
 			//Load all commits in the Array $comments[] from issue
 			$comments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
-			$this->log->notice('API-Request!','Function:"loadAllComments()" || Pls. check the follow array',$comments);
+			$this->log->notice('API-Request!','Function:"loadAllComments()" || Pls. check the follow array');
 			foreach (array_reverse($comments) as $commentObject) {
 				if ($this->lookForGrInComments($commentObject,$nameGitReminder, $taskIndex)) {
 					return true;
@@ -430,7 +415,6 @@ class gitReminder
 	 */
 	private function lookForGrInComments(GitHubPullComment $commentObject,$nameGitReminder,$taskIndex)
 	{
-		$this->log->info('Function: lookForGrInComments()','Function start.');
 		//Here we are looking for the $nameGitReminder (name of bot) in the other "body"strings
 		$nextComments = $commentObject->getBody();
 
@@ -457,7 +441,6 @@ class gitReminder
 	 */
 	private function loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex)
 	{
-		$this->log->info('Function: loadIssueBody()','Function start.');
 		$issue = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId, 'GET', array(), 200, 'GitHubPullComment', true);
 		$this->log->notice('API-Request!','Function:"loadIssueBody()" || Pls. check the follow array',$issue);
 
@@ -477,7 +460,6 @@ class gitReminder
 	 */
 	private function lookForGrInIssue(GitHubPullComment $issue,$nameGitReminder,$taskIndex)
 	{
-		$this->log->info('Function: lookForGrInIssue()','Function start.');
 		//Look at the "body"string and searching for $nameGitReminder (name of bot) in the first comment
 		//Here we will get the body (the message) from the issue
 		$issueBody = $issue->getBody();
@@ -502,7 +484,6 @@ class gitReminder
 	 */
 	private function createMatureDate($timeFormat,$value,$comment)
 	{
-		$this->log->info('Function: createMatureDate()','Function start.');
 		//If the sytax say stop or ... GitReminder will assign in this moment.
 		if ($value['matureDate'] == 'stop' || $value['matureDate'] == 'ignore' || $value['matureDate'] == 'end' || $value['matureDate'] == 'now'){
 			$value['matureDate'] = 0;
@@ -550,7 +531,6 @@ class gitReminder
 	 */
 	private function createFeatureTask($value,$comment)
 	{
-		$this->log->info('Function: createFeatureTask()','Function start.');
 		if (isset($value['sendmail']) && $value['sendmail'] != '' && $value['sendmailto'] != ''){
 			$comment['sendMailNotificationTo'] = $value['sendmailto'];
 		}
@@ -572,7 +552,6 @@ class gitReminder
 	 */
 	private function createTask($value,$comment)
 	{
-		$this->log->info('Function: createTask()','Function start.');
 		//If the Value of $value["assignIssueToUser"] is not empty and is set, it writes the user in $this->tasks[*]["assignIssueToUser"] else the author of the comment is the userToAssign
 		if (isset($value["assignIssueToUser"]) && $value["assignIssueToUser"] != "")
 			$comment["assignIssueToUser"] = str_replace("@","" , $value["assignIssueToUser"]);
@@ -595,6 +574,36 @@ class gitReminder
 	}
 
 	/**
+	 * With this methode you can edit an GitHub Issue.
+	 * For example you can assign an issue to an user
+	 * @param $issueLink
+	 * @param $title
+	 * @param null $body
+	 * @param null $assignee
+	 * @param null $state
+	 * @param null $milestone
+	 * @param null $labels
+	 * @return mixed
+	 */
+	private function editAnGHIssue($issueLink, $title, $body = null, $assignee = null, $state = null, $milestone = null, $labels = null){
+		$data = array();
+			$data['title'] = $title;
+		if(!is_null($body))
+			$data['body'] = $body;
+		if(!is_null($assignee))
+			$data['assignee'] = $assignee;
+		if(!is_null($state))
+			$data['state'] = $state;
+		if(!is_null($milestone))
+			$data['milestone'] = $milestone;
+		if(!is_null($labels))
+			$data['labels'] = $labels;
+
+		return $this->githubRepo->request("$issueLink", 'PATCH', json_encode($data), 200, 'GitHubIssue');
+
+	}
+
+	/**
 	 * Process the task and feature. For example write mail etc.
 	 * work with checkUserAndProcess()
 	 * @param $task
@@ -602,8 +611,7 @@ class gitReminder
 	 */
 	private function processTask($task)
 	{
-		$this->log->info('Function: processTask()','Function start.');
-		$return = $this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitle"], $task["ghIssueId"], null, $task["assignIssueToUser"]);
+		$return = $this->editAnGHIssue($task['issueLink'],$task["issueTitle"],null, $task["assignIssueToUser"]);
 		$this->log->info("API-Request!",'Function: processTask() || Pls. check the following array',$return);
 
 		if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0'){
@@ -631,10 +639,8 @@ class gitReminder
 	 */
 	private function processErrorTask($task,$text)
 	{
-		$this->log->info('Function: processErrorTask()','Function start.');
-		$return = $this->githubRepo->issues->editAnIssue($task["ghRepoUser"], $task["ghRepo"], $task["issueTitle"], $task["ghIssueId"], null, $task["author"]);
-		$this->log->info("API-Request!",'Function: processErrorTask() || Pls. check the following array',$return);
-
+		$return = $this->editAnGHIssue($task['issueLink'],$task["issueTitle"],null, $task['author']);
+		$this->log->info("API-Request!",'Function: processErrorTask() || Pls. check the following array');
 		$this->createComment($task['issueLink'],$text);
 		return true;
 	}
@@ -648,7 +654,6 @@ class gitReminder
 	 */
 	private function checkContributorsInIssue($repoUser,$repo,$user)
 	{
-		$this->log->info('Function: checkContributorsInIssue()','Function start.');
 		$contributors = $this->githubRepo->request("/repos/".$repoUser."/".$repo."/collaborators", 'GET', array(), 200, 'GitHubUser', true);
 		$this->log->info("API-Request!",'Function: checkContributorsInIssue() || Pls. check the following array',$contributors);
 
@@ -669,7 +674,6 @@ class gitReminder
 	 */
 	private function createComment($ghIssueLink,$body)
 	{
-		$this->log->info('Function: createComment()','Function start.');
 		switch($body)
 		{
 			case 'do':
@@ -705,7 +709,6 @@ class gitReminder
 	 */
 	private function getIssue($repoOwner,$repo,$issueId)
 	{
-		$this->log->info('Function: getIssue()','Function start.');
 		$issue = $this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId",'GET', array(), 200, 'GitHubIssue');
 		$this->log->info("API-Request!",'Function: createComment() || Pls. check the following array',$issue);
 		return $issue;
@@ -722,7 +725,6 @@ class gitReminder
 	 */
 	private function sendMailNotification($mailAddress,$text,$link = NULL,$comments = NULL,$error = MAIL_NO_ERROR_SEND)
 	{
-		$this->log->info('Function: sendMailNotification()','Function start.');
 		$header = MAIL_HEADER;
 		$header .= 'To: <'.$mailAddress.'>' . "\r\n";
 		$subject = MAIL_STANDARD_SUBJECT;
@@ -767,11 +769,12 @@ class gitReminder
 	 */
 	public function setGithubAccount($ghUser, $ghPassOrToken)
 	{
-		$this->log->info('Function: setGithubAccount()','Function start.');
 		$this->githubRepo = new GitHubClient();
 		$this->githubRepo->setCredentials($ghUser, $ghPassOrToken);
 		return $this;
 	}
+
+	
 
     /**
      * Load unread GitHub-Notifications
@@ -780,7 +783,6 @@ class gitReminder
      */
     public function loadGhNotifications($nameGitReminder)
     {
-		$this->log->info('Function: loadGhNotifications()','Function start.');
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
 		$this->log->info("API-Request!",'Function: loadGhNotifications() || Pls. check the following array',$notifications);
@@ -800,7 +802,6 @@ class gitReminder
      */
     public function parseSourceText($nameGitReminder = GITREMINDER_NAME)
     {
-		$this->log->info('Function: parseSourceText()','Function start.');
     	foreach ($this->tasks as &$comment)
     	{
     		if ((isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "") && isset($comment['sourceText']))
@@ -821,7 +822,6 @@ class gitReminder
 	 */
 	public function checkActionLimit($actionLimit = ACTION_LIMIT_DAY)
 	{
-		$this->log->info('Function: checkActionLimit()','Function start.');
 		if(count($this->tasks) >= $actionLimit){
 			throw new Exception("System over actionlimit ($actionLimit)");
 		}
@@ -836,7 +836,6 @@ class gitReminder
 	 */
 	public function checkActionLimitPerRun($actionLimitPerRun = ACTION_LIMIT_PER_RUN)
 	{
-		$this->log->info('Function: checkActionLimitPerRun()','Function start.');
 		$runLimitCounter = 0;
 		foreach($this->tasks as $task){
 			if ($task['matureDate'] < time()) {
@@ -857,7 +856,6 @@ class gitReminder
      */
     public function process()
 	{
-		$this->log->info('Function: process()','Function start.');
     	foreach ($this->tasks as $taskLink => &$task)
 		{
 			if($this->checkCommentStatus($task['commentAId']) === false) {
@@ -884,7 +882,6 @@ class gitReminder
 	 */
 	public function markNotificationAsRead()
 	{
-		$this->log->info('Function: markNotificationAsRead()','Function start.');
 		//Mark notifications as read.
 		$return = $this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
 		$this->log->info("API-Request!",'Function: markNotificationAsRead() || Pls. check the following array',$return);
@@ -913,6 +910,6 @@ class gitReminder
 		$this->storeSettings();
 		$this->closeDb();
 		$this->lockFile('unset');
-		$this->log->notice(NOTICE_END,'... The End is near');
+		$this->log->notice(NOTICE_END,'... The End is here -------------------------------------------------------------------');
     }
 }
