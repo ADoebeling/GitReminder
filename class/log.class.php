@@ -15,7 +15,11 @@ class log
             {
                 foreach ($param as $name => $value)
                 {
-                    $text .= " | $name: $value";
+                    if(is_array($value)){
+                        $text .= " | $name: 'KEIN STRING'".$value['subject']['title'];
+                    }elseif(is_string($value)){
+                        $text .= " | $name: $value";
+                    }
                 }
             }
             elseif (is_array($param) || is_object($param))
