@@ -224,7 +224,6 @@ class gitReminder
 		return $this->mySqlI->query($sql)->num_rows > 0 ? true : false;
 	}
 
-
 	/**
 	 * Load the settings from database
 	 */
@@ -660,8 +659,9 @@ class gitReminder
 		foreach($contributors as $contributor){
 			$contributorUser = $contributor->getLogin();
 
-			if($contributorUser == $user)
+			if(strtolower($contributorUser) == strtolower($user)){
 				return true;
+			}
 		}
 		return false;
 	}
@@ -725,6 +725,8 @@ class gitReminder
 	 */
 	private function sendMailNotification($mailAddress,$text,$link = NULL,$comments = NULL,$error = MAIL_NO_ERROR_SEND)
 	{
+		$this->log->info("[SEND MAIL]",'Function: sendMailNotification()');
+
 		$header = MAIL_HEADER;
 		$header .= 'To: <'.$mailAddress.'>' . "\r\n";
 		$subject = MAIL_STANDARD_SUBJECT;
@@ -773,8 +775,6 @@ class gitReminder
 		$this->githubRepo->setCredentials($ghUser, $ghPassOrToken);
 		return $this;
 	}
-
-	
 
     /**
      * Load unread GitHub-Notifications
