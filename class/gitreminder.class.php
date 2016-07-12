@@ -79,7 +79,7 @@ class gitReminder
 			}
 			else {
 				if(!touch($filename)){
-					throw new Exception('Could not create lockfile!');
+					throw new Exception('Could not create lock file!');
 				}
 			}
 		}
