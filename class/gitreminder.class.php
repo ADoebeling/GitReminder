@@ -70,7 +70,13 @@ class gitReminder
     	return $this;
     }
 
-	private function lockFile($createOrUnset = 'create')
+    /**
+     * Create a lock-File by start and delete it at the end.
+     * If the file always exist, the script die with an exception.
+     * @param string $createOrUnset
+     * @throws Exception
+     */
+    private function lockFile($createOrUnset = 'create')
 	{
 		$filename = __DIR__.'/.lock';
 		if($createOrUnset == 'create'){
@@ -116,7 +122,6 @@ class gitReminder
 
 	/**
 	 * Close the DB-Connection
-	 * the call is in __destruct()
 	 *
 	 * @return bool;
 	 */
@@ -147,8 +152,7 @@ class gitReminder
 	private function createTableInDb()
 	{
 		if($this->mySqlI->query('select 1 from `tasks` LIMIT 1') === false){
-			$sql = "
-				CREATE TABLE IF NOT EXISTS tasks(
+			$sql = "CREATE TABLE IF NOT EXISTS tasks(
 					`taskName` VARCHAR(255) NOT NULL PRIMARY KEY,
 					`ghRepoUser` VARCHAR(100) NOT NULL ,
 					`ghRepo` VARCHAR(100) NOT NULL ,
@@ -484,7 +488,7 @@ class gitReminder
 	private function createMatureDate($timeFormat,$value,$comment)
 	{
 		//If the sytax say stop or ... GitReminder will assign in this moment.
-		if ($value['matureDate'] == 'stop' || $value['matureDate'] == 'ignore' || $value['matureDate'] == 'end' || $value['matureDate'] == 'now'){
+		if (!isset($value['matureDate']) || $value['matureDate'] == 'stop' || $value['matureDate'] == 'ignore' || $value['matureDate'] == 'end' || $value['matureDate'] == 'now'){
 			$value['matureDate'] = 0;
 			$timeFormat = 'm';
 		}
@@ -757,11 +761,11 @@ class gitReminder
 		return mail($mailAddress, $subject, $message,$header);
 	}
 
-	/******************************************************************************************************************************************************************************************************************
-	 ******************************************************************************************************************************************************************************************************************
-	 ***********************************************************************************************Here it comes public...********************************************************************************************
-	 ******************************************************************************************************************************************************************************************************************
-	 ******************************************************************************************************************************************************************************************************************/
+	/************************************************************************************************************************************************
+	 ************************************************************************************************************************************************
+	 *********************************************************************PUBLIC*********************************************************************
+	 ************************************************************************************************************************************************
+	 ************************************************************************************************************************************************/
 
 	/**
 	 * Login at github.com-API
