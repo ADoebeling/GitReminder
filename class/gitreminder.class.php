@@ -11,7 +11,8 @@ require_once 'log.class.php';
  * @author      Andreas Doebeling <ad@1601.com>
  * @copyright   1601.communication gmbh
  * @license     CC-BY-SA | https://creativecommons.org/licenses/by-sa/3.0
- * @Link		https://github.com/lb1601com
+ * @Link		https://github.com/LBeckX
+ * @Link        http://UnitGreen.com
  * @Link		https://www.facebook.com/lukas.beck36
  * @link        https://github.com/ADoebeling/GitReminder
  * @link        http://xing.doebeling.de
@@ -588,9 +589,10 @@ class gitReminder
 	 * @param null $labels
 	 * @return mixed
 	 */
-	private function editAnGHIssue($issueLink, $title, $body = null, $assignee = null, $state = null, $milestone = null, $labels = null){
+	private function editAnGHIssue($issueLink, $title = null, $body = null, $assignee = null, $state = null, $milestone = null, $labels = null){
 		$data = array();
-			$data['title'] = $title;
+        if(!is_null($title))
+            $data['title'] = $title;
 		if(!is_null($body))
 			$data['body'] = $body;
 		if(!is_null($assignee))
@@ -614,7 +616,7 @@ class gitReminder
 	 */
 	private function processTask($task)
 	{
-		$return = $this->editAnGHIssue($task['issueLink'],$task["issueTitle"],null, $task["assignIssueToUser"]);
+        $return = $this->editAnGHIssue($task['issueLink'],null,null, $task["assignIssueToUser"]);
 		$this->log->info("API-Request!",'Function: processTask() || Pls. check the following array',$return);
 
 		if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0'){
@@ -642,8 +644,8 @@ class gitReminder
 	 */
 	private function processErrorTask($task,$text)
 	{
-		$return = $this->editAnGHIssue($task['issueLink'],$task["issueTitle"],null, $task['author']);
-		$this->log->info("API-Request!",'Function: processErrorTask() || Pls. check the following array');
+		$return = $this->editAnGHIssue($task['issueLink'],null,null, $task['author']);
+		$this->log->info("API-Request!",'Function: processErrorTask() || Pls. check the following array',$return);
 		$this->createComment($task['issueLink'],$text);
 		return true;
 	}
@@ -763,7 +765,7 @@ class gitReminder
 
 	/************************************************************************************************************************************************
 	 ************************************************************************************************************************************************
-	 *********************************************************************PUBLIC*********************************************************************
+	 ************************************************************** PUBLIC **************************************************************************
 	 ************************************************************************************************************************************************
 	 ************************************************************************************************************************************************/
 
@@ -812,7 +814,7 @@ class gitReminder
     		{
 				//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
 	    		preg_match('/(?<gitreminder>@'.$nameGitReminder.')\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,2}-\d{1,2}-\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/',$comment['sourceText'],$value);
-				$comment = $this->createTask($value,$comment);
+                $comment = $this->createTask($value,$comment);
 	    	}
 		}
     	return $this;
