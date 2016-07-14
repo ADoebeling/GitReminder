@@ -488,7 +488,26 @@ class gitReminder
 	 */
 	private function createMatureDate($timeFormat,$value,$comment)
 	{
-		//If the sytax say stop or ... GitReminder will assign in this moment.
+        if(isset($value['matureDate']) && strlen($value['matureDate']) >= 10 && $timeFormat == " "){
+            $comment["matureDate"] = strtotime($value['matureDate']);
+
+            if($comment["matureDate"] === false){
+                $this->log->warning(WARNING_DATE_FORMAT_IS_FALSE,$comment['ghIssueId']." -> ".$comment['ghRepo']);
+                $this->createComment($comment['issueLink'], COMMENT_DATE_FORMAT_IS_FALSE);
+                $comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
+                $comment["matureDate"] = time();
+                $timeFormat = 'm';
+            }
+
+            if($comment["matureDate"] >= time()+(365*24*60*60)){
+                $this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
+                $this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
+                $comment["matureDate"] = time();
+                $comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
+            }
+        }
+
+	    //If the sytax say stop or ... GitReminder will assign in this moment.
 		if (!isset($value['matureDate']) || $value['matureDate'] == 'stop' || $value['matureDate'] == 'ignore' || $value['matureDate'] == 'end' || $value['matureDate'] == 'now'){
 			$value['matureDate'] = 0;
 			$timeFormat = 'm';
@@ -503,8 +522,7 @@ class gitReminder
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
-		}
-		elseif ($timeFormat == 'm'){
+		} elseif ($timeFormat == 'm'){
 			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
 
 			if ($value['matureDate'] >= 366*24*60){
@@ -513,9 +531,7 @@ class gitReminder
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
-		}
-		// Days
-		else{
+		} elseif($timeFormat == 'd' || $timeFormat == 't') {
 			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
 			if ($value['matureDate'] >= 366){
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
@@ -524,6 +540,7 @@ class gitReminder
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
 		}
+
 		return $comment;
 	}
 
@@ -565,10 +582,12 @@ class gitReminder
 		//Convert the createtimeformat into timestamp
 		$comment['commentCreateDate'] = strtotime($comment['commentCreateDate']);
 
-		if (isset($value['timeFormat']))
-			$timeFormat = strtolower($value['timeFormat']);
-		else
-			$timeFormat = 't';
+		if (isset($value['timeFormat'])){
+            $timeFormat = strtolower($value['timeFormat']);
+        } else {
+            $timeFormat = 'm';
+        }
+
 
 		$comment = $this->createMatureDate($timeFormat,$value,$comment);
 
@@ -813,7 +832,7 @@ class gitReminder
     		if ((isset($comment) && !isset($comment["assignIssueToUser"]) || $comment["assignIssueToUser"] == "") && isset($comment['sourceText']))
     		{
 				//Looking for the following syntax "@nameOfGitReminder [(+|-)](Int day or hour)[timeFormat] [UserToAssign]" like "@Gitreminder +4h @userToAssign" and divide this into Array->$value[]
-	    		preg_match('/(?<gitreminder>@'.$nameGitReminder.')\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,2}-\d{1,2}-\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/',$comment['sourceText'],$value);
+	    		preg_match('/(?<gitreminder>@'.$nameGitReminder.')\s(\+|-)?(?<matureDate>\d{1,2}\.\d{1,2}\.\d{1,4} \d{1,2}:\d{1,2}|\d{1,2}-\d{1,2}-\d{1,4} \d{1,2}:\d{1,2}|\d{1,2}\.\d{1,2}\.\d{1,4}|\d{1,2}-\d{1,2}-\d{1,4}|\d{1,9}|stop|ignore|end|now)(?<timeFormat>.)?(\s)?(?<assignIssueToUser>@[a-zA-Z0-9\-]*)?( )?((?<sendmail>mail (?<sendmailto>.*@.*))|(?<writeComment>comment( )?(?<commentm>.*)?)|(?<sms>sms (?<number>0\d*)))?/',$comment['sourceText'],$value);
                 $comment = $this->createTask($value,$comment);
 	    	}
 		}
