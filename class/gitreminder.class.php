@@ -490,7 +490,6 @@ class gitReminder
 	{
         if(isset($value['matureDate']) && strlen($value['matureDate']) >= 10 && $timeFormat == " "){
             $comment["matureDate"] = strtotime($value['matureDate']);
-
             if($comment["matureDate"] === false){
                 $this->log->warning(WARNING_DATE_FORMAT_IS_FALSE,$comment['ghIssueId']." -> ".$comment['ghRepo']);
                 $this->createComment($comment['issueLink'], COMMENT_DATE_FORMAT_IS_FALSE);
@@ -498,7 +497,6 @@ class gitReminder
                 $comment["matureDate"] = time();
                 $timeFormat = 'm';
             }
-
             if($comment["matureDate"] >= time()+(365*24*60*60)){
                 $this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
                 $this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
@@ -524,14 +522,13 @@ class gitReminder
 			}
 		} elseif ($timeFormat == 'm'){
 			$comment["matureDate"] = $value['matureDate']*60+$comment['commentCreateDate'];
-
 			if ($value['matureDate'] >= 366*24*60){
 				$this->log->warning(WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS,$comment['ghIssueId']." -> ".$comment['ghRepo']);
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
 				$comment["matureDate"] = time();
 				$comment["assignIssueToUser"] = str_replace("@","",$comment['author']);
 			}
-		} elseif($timeFormat == 'd' || $timeFormat == 't') {
+		} elseif(!isset($comment['matureDate']) || $comment['matureDate'] == null) {
 			$comment["matureDate"] = $value['matureDate']*24*60*60+$comment['commentCreateDate'];
 			if ($value['matureDate'] >= 366){
 				$this->createComment($comment['issueLink'], COMMENT_NOT_ASSIGN_365);
