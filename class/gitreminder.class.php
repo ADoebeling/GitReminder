@@ -771,7 +771,7 @@ class gitReminder
 	 * @param $ghPassOrToken
 	 * @return $this
 	 */
-	public function setGithubAccount($ghUser, $ghPassOrToken) {
+	public function setGitHubAccount($ghUser, $ghPassOrToken) {
 		$this->githubRepo = new GitHubClient();
 		$this->githubRepo->setCredentials($ghUser, $ghPassOrToken);
 		return $this;

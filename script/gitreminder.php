@@ -3,7 +3,7 @@ require_once('../bootstrap.php');
 
     $gitReminder = new gitReminder();
     $gitReminder
-        ->setGithubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
+        ->setGitHubAccount(GITREMINDER_NAME, GITREMINDER_PASSWD)
         ->loadGhNotifications(GITREMINDER_NAME)
         ->parseSourceText(GITREMINDER_NAME)
         ->checkActionLimitPerRun()
