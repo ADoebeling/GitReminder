@@ -26,6 +26,7 @@ const NOTICE_END = 'END';
 const WARNING_GR_CALLED_TOO_OFTEN = 'GitReminder has been called more than 30 times.';
 const WARNING_CANT_FIND_GR_IN_COMMENTS = 'Can\'t find GitReminder in Comments.';
 const WARNING_THE_ASSIGN_IS_IN_TOO_MUCH_DAYS = 'Can\' assign in more than 365 days.';
+const WARNING_DATE_FORMAT_IS_FALSE = 'The date format is false:';
 const INFO_ASSIGN_ISSUE_TO_AN_USER = 'Issue is assigned to a user';
 const INFO_NEW_NOTIFICATION = 'New notification from user and repo:';
 
@@ -43,10 +44,12 @@ const COMMENT_BY_LOGGASCH = ' -- MY CREATOR AND MASTER IS LOGGASCH -- ';
 
 const COMMENT_NOT_THE_USER_IN_REPO = 'Can\'t assign this user, cause I did not find it this repo :(';
 const COMMENT_NOT_ASSIGN_365 = 'It is not possible to assign a user in more than 365 days! One year is max! :(';
+const COMMENT_DATE_FORMAT_IS_FALSE = 'Sorry, but you use the wrong time format';
+const COMMENT_SMS_NOT_IMPLEMENTED = 'Sorry, SMS is not implemented yet.';
 
 //Send Mail
 const MAIL_HEADER = 'MIME-Version: 1.0' . "\r\n".
-    'Content-type: text/html; charset=iso-8859-1'."\r\n".
+    'Content-type: text/html; charset=UTF-8'."\r\n".
     'From: GitReminder <reminder@gitreminder.com>'."\r\n";
 
 const MAIL_STANDARD_SUBJECT = '[GitReminder]';
