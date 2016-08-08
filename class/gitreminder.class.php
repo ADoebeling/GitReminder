@@ -878,7 +878,7 @@ class gitReminder
 	 */
 	public function markNotificationAsRead() {
 		//Mark notifications as read.
-		$return = $this->githubRepo->request("/notifications", 'PUT', array(1), 205, '');
+		$return = $this->githubRepo->request("/notifications", 'PUT', array(1), [205,200], '');
 		$this->log->info("API-Request!",'Function: markNotificationAsRead() || Pls. check the following array',$return);
 
 		return $this;
