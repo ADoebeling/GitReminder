@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Europe/Berlin');
 require_once '3rd-party/github-php-client/client/GitHubClient.php';
 require_once 'class/log.class.php';
 require_once 'config/config.php';

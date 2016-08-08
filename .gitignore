@@ -8,5 +8,5 @@ htdocs/gittrigger.php
 config.php
 index.php
 triggerData/*
-/htdocs/index.php
+/htdocs/*
 index_2.php
