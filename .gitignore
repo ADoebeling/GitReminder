@@ -11,3 +11,4 @@ triggerData/*
 /htdocs/*
 index_2.php
 script/gitreminder.sh
+script/gitreminder_new.sh
