@@ -62,7 +62,7 @@ class gitReminder
 		$this->log = new log();
 		$this->lockFile();
     	$this->createFileStructure();
-    	$this->log->notice(NOTICE_START, "GitReminder start work here ---------------------------------------------------------------------");
+    	$this->log->notice(NOTICE_START." - Line:".__LINE__, "GitReminder start work here ---------------------------------------------------------------------");
     	$this->connectDb();
 		$this->createTableInDb();
 		$this->loadStoredTasksFromDb();
@@ -89,8 +89,15 @@ class gitReminder
 			}
 		}
 		else if($createOrUnset == 'unset'){
-			unlink($filename);
+			if(!unlink($filename)){
+                throw new Exception("GitReminder can't delete the lock-file");
+            }
 		}
+		else if($createOrUnset == 'check'){
+		    if(file_exists($filename)){
+                throw new Exception("The lock-file always exists!");
+            }
+        }
 		else{
 			throw new Exception(__METHOD__."($createOrUnset) is not implemented!");
 		}
@@ -342,7 +349,7 @@ class gitReminder
 			$pages = intval($issueObj->getComments() / 30)+1;
 
 			//Write new Notification into the logfile
-			$this->log->info(INFO_NEW_NOTIFICATION,$repo." -> ".$issueTitle);
+			$this->log->info(__METHOD__." - Line:".__LINE__,INFO_NEW_NOTIFICATION." ".$repo." -> ".$issueTitle);
 
 			//Create the Index of one task
 			$taskIndex = "/$repoOwner/$repo/issue/$issueId";
@@ -386,7 +393,7 @@ class gitReminder
 		for ($i=$loop;$i>=1;$i--){
 			//Load all commits in the Array $comments[] from issue
 			$comments = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId."/comments?page=$i", 'GET', array(), 200, 'GitHubPullComment', true);
-			$this->log->notice('API-Request!','Function:"loadAllComments()" || Pls. check the follow array');
+			$this->log->info(__METHOD__.' - API-Request!'." - Line:".__LINE__,'Function:"loadAllComments()" || Pls. check the follow array');
 			foreach (array_reverse($comments) as $commentObject) {
 				if ($this->lookForGrInComments($commentObject,$nameGitReminder, $taskIndex)) {
 					return true;
@@ -431,7 +438,7 @@ class gitReminder
 	 */
 	private function loadIssueBody($repoOwner,$repo,$issueId,$nameGitReminder,$taskIndex) {
 		$issue = $this->githubRepo->request("/repos/".$repoOwner."/".$repo."/issues/".$issueId, 'GET', array(), 200, 'GitHubPullComment', true);
-		$this->log->notice('API-Request!','Function:"loadIssueBody()" || Pls. check the follow array',$issue);
+		$this->log->info(__METHOD__.' - API-Request!'." - Line:".__LINE__,'Function:"loadIssueBody()" || Pls. check the follow array',$issue);
 
 		if($this->lookForGrInIssue($issue,$nameGitReminder,$taskIndex)) {
 			return true;
@@ -543,6 +550,14 @@ class gitReminder
 		return $comment;
 	}
 
+    /**
+     * Get all informations of a single user
+     * @param $user
+     */
+	private function getSingleUser($user){
+        return $this->githubRepo->request("/users/$user", 'GET',array(), [200,404], 'GitHubFullUser');
+    }
+
 	/**
 	 * Create task with the array-data-strings in $value
 	 * work with: parseSourceText()
@@ -565,7 +580,6 @@ class gitReminder
         } else {
             $timeFormat = 'm';
         }
-
 
 		$comment = $this->createMatureDate($timeFormat,$value,$comment);
 
@@ -613,7 +627,7 @@ class gitReminder
 	 */
 	private function processTask($task) {
         $return = $this->editAnGHIssue($task['issueLink'],null,null, $task["assignIssueToUser"]);
-		$this->log->info("API-Request!",'Function: processTask() || Pls. check the following array',$return);
+		$this->log->info(__METHOD__.' - API-Request!'.' - Line:'.__LINE__,'Function: processTask() || Pls. check the following array',$return);
 
 		if (isset($task['sendMailNotificationTo']) && $task['sendMailNotificationTo'] != '0'){
 			$link = str_replace("/repos", "", $task['issueLink']);
@@ -627,7 +641,7 @@ class gitReminder
             $this->createComment($task['issueLink'], COMMENT_SMS_NOT_IMPLEMENTED);
 		}
 
-		$this->log->info(INFO_ASSIGN_ISSUE_TO_AN_USER,'|| ID:'.$task['ghIssueId'].' || Issue title:'.$task['issueTitle'].' || Assigned user:'.$task['assignIssueToUser']);
+		$this->log->info(__METHOD__.' - '.INFO_ASSIGN_ISSUE_TO_AN_USER.' - Line:'.__LINE__,'|| ID:'.$task['ghIssueId'].' || Issue title:'.$task['issueTitle'].' || Assigned user:'.$task['assignIssueToUser']);
 
 		return true;
 	}
@@ -641,12 +655,12 @@ class gitReminder
 	 */
 	private function processErrorTask($task,$text) {
 		$return = $this->editAnGHIssue($task['issueLink'],null,null, $task['author']);
-		$this->log->info("API-Request!",'Function: processErrorTask() || Pls. check the following array',$return);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: processErrorTask() || Pls. check the following array',$return);
 		$this->createComment($task['issueLink'],$text);
 		return true;
 	}
 
-	/**
+	/**;
 	 * Check if the User is in the Repo
 	 * @param $repoUser
 	 * @param $repo
@@ -655,7 +669,7 @@ class gitReminder
 	 */
 	private function checkContributorsInIssue($repoUser,$repo,$user) {
 		$contributors = $this->githubRepo->request("/repos/".$repoUser."/".$repo."/collaborators", 'GET', array(), 200, 'GitHubUser', true);
-		$this->log->info("API-Request!",'Function: checkContributorsInIssue() || Pls. check the following array',$contributors);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: checkContributorsInIssue() || Pls. check the following array',$contributors);
 
 		foreach($contributors as $contributor){
 			$contributorUser = $contributor->getLogin();
@@ -696,7 +710,7 @@ class gitReminder
 		$data = array();
 		$data['body'] = $body;
 		$return = $this->githubRepo->request($ghIssueLink."/comments", 'POST', json_encode($data), 201, 'GitHubIssueComment');
-		$this->log->info("API-Request!",'Function: createComment() || Pls. check the following array',$return);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: createComment() || Pls. check the following array',$return);
 		return true;
 	}
 
@@ -709,7 +723,7 @@ class gitReminder
 	 */
 	private function getIssue($repoOwner,$repo,$issueId) {
 		$issue = $this->githubRepo->request("/repos/$repoOwner/$repo/issues/$issueId",'GET', array(), 200, 'GitHubIssue');
-		$this->log->info("API-Request!",'Function: createComment() || Pls. check the following array',$issue);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: createComment() || Pls. check the following array',$issue);
 		return $issue;
 	}
 
@@ -723,7 +737,7 @@ class gitReminder
 	 * @return bool
 	 */
 	private function sendMailNotification($mailAddress,$text,$link = NULL,$comments = NULL,$error = MAIL_NO_ERROR_SEND) {
-		$this->log->info("[SEND MAIL]",'Function: sendMailNotification()');
+		$this->log->info(__METHOD__.' - Line:'.__LINE__,'Function: sendMailNotification()');
 
 		$header = MAIL_HEADER;
 		$header .= 'To: <'.$mailAddress.'>' . "\r\n";
@@ -785,7 +799,7 @@ class gitReminder
     public function loadGhNotifications($nameGitReminder) {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
-		$this->log->info("API-Request!",'Function: loadGhNotifications() || Pls. check the following array',$notifications);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: loadGhNotifications() || Pls. check the following array',$notifications);
 
         if(count($notifications)>=30)$this->log->warning(WARNING_GR_CALLED_TOO_OFTEN,$notifications);
 
@@ -879,7 +893,7 @@ class gitReminder
 	public function markNotificationAsRead() {
 		//Mark notifications as read.
 		$return = $this->githubRepo->request("/notifications", 'PUT', array(1), [205,200], '');
-		$this->log->info("API-Request!",'Function: markNotificationAsRead() || Pls. check the following array',$return);
+		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: markNotificationAsRead() || Pls. check the following array',$return);
 
 		return $this;
 	}
@@ -903,6 +917,7 @@ class gitReminder
 		$this->storeSettings();
 		$this->closeDb();
 		$this->lockFile('unset');
+        $this->lockFile('check');
 		$this->log->notice(NOTICE_END,'... The End is here -------------------------------------------------------------------');
     }
 }
