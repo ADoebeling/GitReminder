@@ -61,6 +61,7 @@ class gitReminder
     public function __construct() {
 		$this->log = new log();
 		$this->lockFile();
+        $this->timeFile('update');
     	$this->createFileStructure();
     	$this->log->notice(NOTICE_START." - Line:".__LINE__, "GitReminder start work here ---------------------------------------------------------------------");
     	$this->connectDb();
@@ -102,6 +103,49 @@ class gitReminder
 			throw new Exception(__METHOD__."($createOrUnset) is not implemented!");
 		}
 	}
+
+    /**
+     * Check if time is less then 5 minutes not updated
+     * @param $checkOrUpdate
+     * @return bool
+     */
+	private function timeFile($checkOrUpdate = 'check',$timeCheck = 1){
+        $filename = __DIR__.'/.time';
+        if($checkOrUpdate == 'update'){
+            if(!file_exists($filename)){
+                if(!touch($filename)){
+                    throw new Exception('Could not create time file!');
+                }
+                else{
+                    $minutes = time();
+                    file_put_contents($filename,$minutes);
+                }
+            }
+            else{
+                $minutes = time();
+                file_put_contents($filename,$minutes);
+
+            }
+         } elseif ($checkOrUpdate == 'check'){
+            if(!file_exists($filename)){
+                throw new Exception('Time-File not exists');
+            } else {
+                $content = file_get_contents($filename);
+                if($content == '' || $content == null || $content == false){
+                    throw new Exception("Time-File error with the content: $content");
+                } else {
+                    $content = intval($content);
+                    if((time()-$content) >= $timeCheck*60){
+                        $actTime = time()-$content;
+                        throw new Exception("Script need mor than $timeCheck minute/s. Actual time $actTime (seconds) - content time = ");
+                    }
+                }
+            }
+        } else{
+            throw new Exception("$checkOrUpdate is not a task!");
+        }
+	    return true;
+    }
 
 	/**
 	 * DO the db-Connection and load all Data
@@ -799,6 +843,7 @@ class gitReminder
     public function loadGhNotifications($nameGitReminder) {
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
+
 		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: loadGhNotifications() || Pls. check the following array',$notifications);
 
         if(count($notifications)>=30)$this->log->warning(WARNING_GR_CALLED_TOO_OFTEN,$notifications);
@@ -919,5 +964,6 @@ class gitReminder
 		$this->lockFile('unset');
         $this->lockFile('check');
 		$this->log->notice(NOTICE_END,'... The End is here -------------------------------------------------------------------');
+        $this->timeFile();
     }
 }

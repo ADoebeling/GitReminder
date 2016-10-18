@@ -2,6 +2,8 @@ tasks.phpserialize
 tasks.json
 logs/
 class/gittrigger.class.php
+class/.time
+class/.lock
 config/gittrigger.conf.php
 class/log_gittrigger.class.php
 htdocs/gittrigger.php

@@ -13,8 +13,24 @@ function exceptionHandler(\Exception $e)
 {
     echo '<h1>Error</h1><p>Sorry, the script died with a exception</p>';
     echo $e->getMessage().' in <br>'.$e->getFile().': <br>'.$e->getLine(),' : <br>',__FUNCTION__,' : <br>',$e->getTraceAsString();
-    log::error($e->getMessage().' in '.$e->getFile().':'.$e->getLine(),__FUNCTION__,$e->getTraceAsString());
-    mail(ADMIN_MAIL,'[GitReminder] System got locked',$e->getMessage().' in '.$e->getFile().':'.$e->getLine()."\n\n". __FUNCTION__.$e->getTrace());
+    log::error(
+        $e->getMessage().' in '.
+        $e->getFile().':'.
+        $e->getLine()."<br>\n"
+        ,
+        "Code: ".$e->getCode(),
+        $e->getTrace()
+    );
+
+    mail(ADMIN_MAIL,
+        '[GitReminder] System got locked',
+        $e->getMessage().' in '.
+        $e->getFile().':'.
+        $e->getLine()."\n\n".
+        "Funktion -> ".__FUNCTION__.$e->getTraceAsString()."\n\n".
+        "Code: ".$e->getCode()
+    );
+
     @trigger_error('',E_USER_ERROR);
 }
 set_exception_handler('exceptionHandler');
