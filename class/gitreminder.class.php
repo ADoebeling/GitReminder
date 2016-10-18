@@ -117,7 +117,7 @@ class gitReminder
                     throw new Exception('Could not create time file!');
                 }
                 else{
-                    $minutes = time()/60;
+                    $minutes = time();
                     file_put_contents($filename,$minutes);
                 }
             }
@@ -132,13 +132,13 @@ class gitReminder
             } else {
                 $content = file_get_contents($filename);
                 if($content == '' || $content == null || $content == false){
-                    throw new Exception('Time-File error with the content:',$content);
+                    throw new Exception("Time-File error with the content: $content");
                 } else {
                     $content = intval($content);
                     if((time()-$content) >= $timeCheck*60){
-                        throw new Exception("Script need mor than $timeCheck minute/s.",'Actual time (seconds) - content time = '.(time()-$content));
+                        $actTime = time()-$content;
+                        throw new Exception("Script need mor than $timeCheck minute/s. Actual time $actTime (seconds) - content time = ");
                     }
-                    echo (time()-$content);
                 }
             }
         }
