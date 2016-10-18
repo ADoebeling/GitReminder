@@ -844,8 +844,6 @@ class gitReminder
     	//We are looking for new notifications and return them as an Array in var $notification
     	$notifications = json_decode($this->githubRepo->request("/notifications", 'GET', array('participating' => true), 200, 'string', true), true);
 
-        var_dump($notifications);
-
 		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: loadGhNotifications() || Pls. check the following array',$notifications);
 
         if(count($notifications)>=30)$this->log->warning(WARNING_GR_CALLED_TOO_OFTEN,$notifications);
