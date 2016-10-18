@@ -339,7 +339,7 @@ class gitReminder
 				doneDay = '".$task['doneDay']."';";
 
 			if(!$this->mySqlI->query($sql)) {
-				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . ' tasks ');
+				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . ' || Error ->' .$this->mySqlI->error. ' || In table "tasks" ');
 			}
 		}
 		return $this;
@@ -367,7 +367,7 @@ class gitReminder
 	    	";
 
 			if(!$this->mySqlI->query($sql)) {
-				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . 'settings');
+				throw new Exception(EXCEPTION_CANT_INSERT_OR_UPDATE_DB . ' || Error ->' .$this->mySqlI->error. ' || In table "settings" ');
 			}
 		}
 		return $this;
