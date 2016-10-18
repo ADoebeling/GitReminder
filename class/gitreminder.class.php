@@ -126,7 +126,7 @@ class gitReminder
                 file_put_contents($filename,$minutes);
 
             }
-         } else {
+         } elseif ($checkOrUpdate == 'check'){
             if(!file_exists($filename)){
                 throw new Exception('Time-File not exists');
             } else {
@@ -141,6 +141,8 @@ class gitReminder
                     }
                 }
             }
+        } else{
+            throw new Exception("$checkOrUpdate is not a task!");
         }
 	    return true;
     }
