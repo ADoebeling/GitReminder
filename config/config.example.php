@@ -42,7 +42,7 @@ const COMMENT_BY_ = 'Just do it, nothing is impossible :P';
 const COMMENT_BY_LATER = 'You can do it later :)';
 const COMMENT_BY_LOGGASCH = ' -- MY CREATOR AND MASTER IS LOGGASCH -- ';
 
-const COMMENT_NOT_THE_USER_IN_REPO = 'Can\'t assign this user, cause I did not find it this repo :(';
+const COMMENT_NOT_THE_USER_IN_REPO = 'Can\'t assign this user, cause I did not find it this repo (no collaborator) :(';
 const COMMENT_NOT_ASSIGN_365 = 'It is not possible to assign a user in more than 365 days! One year is max! :(';
 const COMMENT_DATE_FORMAT_IS_FALSE = 'Sorry, but you use the wrong time format';
 const COMMENT_SMS_NOT_IMPLEMENTED = 'Sorry, SMS is not implemented yet.';
