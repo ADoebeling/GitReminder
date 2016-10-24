@@ -385,8 +385,8 @@ class gitReminder
 			$issueTitle = $element["subject"]["title"];
 			$issuePath = str_replace("https://api.github.com","",$element["subject"]["url"]);
 			$issueId = intval(str_replace("/repos/$repoOwner/$repo/issues/","",$issuePath));
-
-			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);//
+			$issueObj = $this->getIssue($repoOwner, $repo, $issueId);
+            $issueAuthor = strtolower($issueObj->getUser()->getLogin());
 
 			/*Check how many comments the Issue has.
 			Calc the loop depending on comments*/
@@ -404,6 +404,7 @@ class gitReminder
 				'ghRepo'	 => $repo,
 				'issueLink'  => $issuePath,
 				'issueTitle' => $issueTitle,
+                'issueAuthor' => $issueAuthor,
 				'ghIssueId'	 => $issueId,
 				'doneDay' => 0,
 			);
@@ -709,16 +710,23 @@ class gitReminder
 	 * @param $repoUser
 	 * @param $repo
 	 * @param $user
+     * @param $issueAuthor
 	 * @return bool
 	 */
-	private function checkContributorsInIssue($repoUser,$repo,$user) {
+	private function checkContributorsInIssue($repoUser,$repo,$user,$issueAuthor) {
+        $user = strtolower($user);
+
+        if($user == $issueAuthor){
+            return true;
+        }
+
 		$contributors = $this->githubRepo->request("/repos/".$repoUser."/".$repo."/collaborators", 'GET', array(), 200, 'GitHubUser', true);
 		$this->log->info(__METHOD__." - API-Request!".' - Line:'.__LINE__,'Function: checkContributorsInIssue() || Pls. check the following array',$contributors);
 
 		foreach($contributors as $contributor){
 			$contributorUser = $contributor->getLogin();
 
-			if(strtolower($contributorUser) == strtolower($user)){
+			if(strtolower($contributorUser) == $user){
 				return true;
 			}
 		}
@@ -915,8 +923,7 @@ class gitReminder
 		{
 			if($this->checkCommentStatus($task['commentAId']) === false) {
 				if ($task['matureDate'] < time()) {
-
-					if ($this->checkContributorsInIssue($task['ghRepoUser'], $task['ghRepo'], $task['assignIssueToUser'])) {
+					if ($this->checkContributorsInIssue($task['ghRepoUser'], $task['ghRepo'], $task['assignIssueToUser'],$task['issueAuthor'])) {
 						$this->processTask($task);
 						$task['doneDay'] = time();
 					} else {
